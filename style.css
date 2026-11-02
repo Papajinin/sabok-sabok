@@ -35,16 +35,16 @@ input { font: inherit; color: inherit; }
   position: fixed; inset: 0; z-index: 100;
   background: var(--navy); color: #fff;
   display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
-  transition: opacity .35s ease;
+  transition: opacity .5s ease;
 }
 .splash.out { opacity: 0; pointer-events: none; }
 .walk { position: relative; width: 130px; height: 190px; margin-bottom: 22px; }
-.ft { position: absolute; width: 52px; opacity: 0; animation: step .3s ease-out forwards; }
-.ft.l { left: 14px; bottom: 0; transform: scaleX(-1) rotate(-5deg); animation-delay: .1s; }
-.ft.r { right: 14px; top: 0; transform: rotate(5deg); animation-delay: .4s; }
+.ft { position: absolute; width: 52px; opacity: 0; animation: step .45s ease-out forwards; }
+.ft.l { left: 14px; bottom: 0; transform: scaleX(-1) rotate(-5deg); animation-delay: .2s; }
+.ft.r { right: 14px; top: 0; transform: rotate(5deg); animation-delay: .75s; }
 @keyframes step { from { opacity: 0; translate: 0 10px; } to { opacity: 1; translate: 0 0; } }
-.s-title { font-size: 44px; font-weight: 900; line-height: 1.12; opacity: 0; animation: fade .3s ease-out .65s forwards; }
-.s-sub { margin-top: 10px; font-size: 15px; color: var(--on-navy-muted); opacity: 0; animation: fade .3s ease-out .75s forwards; }
+.s-title { font-size: 44px; font-weight: 900; line-height: 1.12; opacity: 0; animation: fade .45s ease-out 1.3s forwards; }
+.s-sub { margin-top: 10px; font-size: 15px; color: var(--on-navy-muted); opacity: 0; animation: fade .45s ease-out 1.5s forwards; }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 .stamp {
   position: absolute; right: 30px; bottom: calc(66px + env(safe-area-inset-bottom, 0px)); z-index: 2;
@@ -52,7 +52,7 @@ input { font: inherit; color: inherit; }
   color: var(--stamp); font-size: 30px; font-weight: 900;
   display: flex; align-items: center; justify-content: center;
   opacity: 0; transform: rotate(-14deg) scale(1.6);
-  animation: stamp .22s ease-in 1s forwards;
+  animation: stamp .25s ease-in 2s forwards;
 }
 @keyframes stamp { to { opacity: .92; transform: rotate(-14deg) scale(1); } }
 .band {

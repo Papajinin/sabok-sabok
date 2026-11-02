@@ -36,13 +36,13 @@ function boot() {
   if (!localStorage.getItem(UID_KEY)) showLogin();
 }
 
-// 시작 화면: 약 1.6초 보여 주고 사라짐
+// 시작 화면: 약 3초 보여 주고 사라짐
 function splash() {
   const el = document.getElementById('splash');
   setTimeout(() => {
     el.classList.add('out');
-    setTimeout(() => el.remove(), 400);
-  }, 1600);
+    setTimeout(() => el.remove(), 600);
+  }, 3000);
 }
 
 // 클라우드 연결 전: 이 컴퓨터의 data/연도.json을 읽음

@@ -14,4 +14,4 @@
 - **비공개:** `data/`는 GitHub에 안 올림(.gitignore). Firebase `exams/{연도}`에 `tools/upload.html`로 올림. 규칙 `firestore.rules`(엄마·아빠 계정만 읽기, 기록은 각자 따로, 문제 올리기는 아빠만)
 - **설정값이 비어 있으면** 로그인 없이 이 컴퓨터의 `data/`에서 읽음 (만들면서 확인용)
 - **기록:** `users/{uid}` 문서 하나에 state 전체(JSON 글자). 나중에 고친 쪽(updatedAt)이 이김
-- **버전:** 올릴 때마다 `index.html`의 `APP_VERSION`과 `version.txt`를 같이 올림. 지금 1
+- **버전:** 올릴 때마다 `index.html`의 `APP_VERSION`과 `version.txt`를 같이 올림. 지금 3

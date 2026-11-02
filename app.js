@@ -22,12 +22,13 @@ let Q = [];          // 모든 문제 (연도·교시·번호 순)
 let QI = {};         // id → 문제
 let YEARS = [];      // 들어 있는 연도 (최근 먼저)
 let ROUNDS = {};     // 연도 → 회차
+const EXAM_DATE = '2027-01-16'; // 시험 날짜 기본값 (기록 화면에서 바꿀 수 있음)
 let state = loadLocal();
 let view = { tab: 'home', screen: null, data: {} }; // 지금 화면
 
 function defaultState() {
   return {
-    settings: { examDate: '', subjects: [], years: [], count: 25, order: 'unsolved' },
+    settings: { examDate: EXAM_DATE, subjects: [], years: [], count: 25, order: 'unsolved' },
     round: 1,          // 지금 몇 회독째
     rounds: [],        // 끝낸 회독 [{ n, at }]
     rec: {},           // 문제 id → { r: 마지막으로 푼 회독, a: 고른 답, ok, c: 맞힌 횟수, w: 틀린 횟수, t }
@@ -48,7 +49,9 @@ function loadLocal() {
 }
 function normalize(s) {
   const d = defaultState();
-  return { ...d, ...s, settings: { ...d.settings, ...(s.settings || {}) } };
+  const r = { ...d, ...s, settings: { ...d.settings, ...(s.settings || {}) } };
+  if (!r.settings.examDate) r.settings.examDate = EXAM_DATE; // 날짜를 안 넣었으면 기본 시험일
+  return r;
 }
 function saveLocal() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
