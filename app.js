@@ -28,11 +28,13 @@ let view = { tab: 'home', screen: null, data: {} }; // 지금 화면
 
 function defaultState() {
   return {
-    settings: { examDate: EXAM_DATE, subjects: [], years: [], count: 25, order: 'unsolved' },
+    settings: { examDate: EXAM_DATE, subjects: [], years: [], count: 25, order: 'unsolved',
+      // 오답노트 고르기: 과목·연도(여러 개), 문제 수(0=전부), 풀기 순서(old/random/wrong), 목록 정렬(new/wrong/old)
+      nSubjects: [], nYears: [], nCount: 10, nOrder: 'old', nSort: 'new' },
     round: 1,          // 지금 몇 회독째
     rounds: [],        // 끝낸 회독 [{ n, at }]
     rec: {},           // 문제 id → { r: 마지막으로 푼 회독, a: 고른 답, ok, c: 맞힌 횟수, w: 틀린 횟수, t }
-    note: {},          // 오답노트: 문제 id → { tag: 'x'(틀림) | 'h'(헷갈림), at }
+    note: {},          // 오답노트: 문제 id → { tag: 'x'(틀림) | 'h'(헷갈림), at, s: 넣은 뒤 연속 맞힘 }
     resume: null,      // 풀던 묶음 (이어 풀기)
     mocks: [],         // 모의고사 기록
     statsSince: Date.now(), // 정답률을 센 시작 시각 (초기화하면 바뀜)
@@ -71,6 +73,7 @@ function setQuestions(list, rounds) {
   ROUNDS = rounds || {};
   // 없어진 연도는 고른 목록에서 뺌
   state.settings.years = state.settings.years.filter(y => YEARS.includes(y));
+  state.settings.nYears = state.settings.nYears.filter(y => YEARS.includes(y));
 }
 
 // ---------- 도구 ----------
@@ -319,6 +322,8 @@ function record(id, choice) {
   r.a = choice; r.ok = ok; r.r = state.round; r.t = Date.now();
   if (ok) r.c++; else r.w++;
   state.rec[id] = r;
+  const n = state.note[id];
+  if (n) n.s = ok ? (n.s || 0) + 1 : 0; // 오답노트 문제: 연속 맞힘 (틀리면 0부터)
   return ok;
 }
 // 모든 문제를 이번 회독에서 풀었으면 다음 회독으로
@@ -496,7 +501,8 @@ function finishPractice(run) {
 function listCard(q, right) {
   return `<div class="card" data-id="${q.id}">
       <div class="m"><span>${right.tag || ''}${esc(where(q))}</span>${right.btn || ''}</div>
-      <p>${esc(stemText(q))}</p>
+      <p>${esc(stemText(q))}</p>${right.sub ? `
+      <div class="sub">${right.sub}</div>` : ''}
     </div>`;
 }
 function noteBtnHtml(id) {

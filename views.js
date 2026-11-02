@@ -1,46 +1,123 @@
 // 사복사복: 오답노트 · 검색 · 모의고사 · 기록 화면
 
 // ---------- 오답노트 ----------
+const GRAD = 3; // 연속으로 이만큼 맞히면 졸업 후보 (빼는 건 직접)
+function noteSeen(id) { // 마지막으로 본 때: 넣은 뒤 안 풀었으면 넣은 때
+  const r = state.rec[id];
+  return Math.max(r && r.t || 0, state.note[id].at || 0);
+}
+function noteWrong(id) { return state.rec[id] ? state.rec[id].w || 0 : 0; }
+function noteSort(ids, how) {
+  if (how === 'random') return shuffle(ids.slice());
+  const by = {
+    new: (a, b) => state.note[b].at - state.note[a].at,
+    old: (a, b) => noteSeen(a) - noteSeen(b),
+    wrong: (a, b) => noteWrong(b) - noteWrong(a) || noteSeen(a) - noteSeen(b)
+  }[how];
+  return ids.slice().sort(by);
+}
 function renderNote() {
+  const s = state.settings;
   const f = view.data.filter || 'all';
-  const subj = view.data.subj || '';
+  const grad = !!view.data.grad;
   const all = Object.keys(state.note).filter(id => QI[id]);
   const byTag = t => all.filter(id => state.note[id].tag === t).length;
-  const list = all
-    .filter(id => (f === 'all' || state.note[id].tag === f) && (!subj || QI[id].subject === subj))
-    .sort((a, b) => state.note[b].at - state.note[a].at);
-  const subjects = SUBJECTS.filter(s => all.some(id => QI[id].subject === s.k));
+  const isGrad = id => (state.note[id].s || 0) >= GRAD;
+  const gradN = all.filter(isGrad).length;
+  const list = all.filter(id => (f === 'all' || state.note[id].tag === f)
+    && (!s.nSubjects.length || s.nSubjects.includes(QI[id].subject))
+    && (!s.nYears.length || s.nYears.includes(QI[id].year))
+    && (!grad || isGrad(id)));
+  const solveN = s.nCount === 0 ? list.length : Math.min(s.nCount, list.length);
+  // 과목별 오답 수 (많은 순)
+  const bars = SUBJECTS.map(x => ({ k: x.k, n: all.filter(id => QI[id].subject === x.k).length }))
+    .filter(x => x.n).sort((a, b) => b.n - a.n);
+  const maxN = bars.length ? bars[0].n : 1;
+  const shownBars = view.data.moreBars ? bars : bars.slice(0, 3);
+  const chip = (on, label, attr) => `<button type="button" class="chip${on ? ' on' : ''}" ${attr}>${esc(label)}</button>`;
+  const streak = id => { const k = Math.min(state.note[id].s || 0, GRAD); return '✓'.repeat(k) + '○'.repeat(GRAD - k); };
   appEl.innerHTML = `
     ${headHtml('오답노트', `<div class="dday">${all.length}</div>`)}
     <div class="body">
+      ${bars.length ? `<div class="nbars" id="bars">
+        ${shownBars.map(x => `<button type="button" class="nbar${s.nSubjects.length === 1 && s.nSubjects[0] === x.k ? ' on' : ''}" data-v="${x.k}">
+          <span>${x.k}</span><i><b style="width:${(x.n / maxN * 100).toFixed(0)}%"></b></i><em>${x.n}</em></button>`).join('')}
+        ${bars.length > 3 ? `<button type="button" class="more" id="moreBars">${view.data.moreBars ? '접기' : `과목 ${bars.length - 3}개 더 보기`}</button>` : ''}
+      </div>` : ''}
       <div class="seg" id="seg">
         <button type="button" data-f="all" class="${f === 'all' ? 'on' : ''}">전체 ${all.length}</button>
         <button type="button" data-f="x" class="${f === 'x' ? 'on' : ''}">틀림 ${byTag('x')}</button>
         <button type="button" data-f="h" class="${f === 'h' ? 'on' : ''}">헷갈림 ${byTag('h')}</button>
       </div>
-      ${subjects.length > 1 ? `<p class="lbl">과목</p><div class="chips" id="subj">
-        <button type="button" class="chip${subj ? '' : ' on'}" data-v="">전체</button>
-        ${subjects.map(s => `<button type="button" class="chip${subj === s.k ? ' on' : ''}" data-v="${s.k}">${s.k}</button>`).join('')}
-      </div>` : ''}
-      ${list.length ? `<button class="btn yellow start" type="button" id="solveBtn">오답만 풀기 ▶ (${list.length}문제)</button>
-        <div id="list">${list.map(id => listCard(QI[id], {
+      <p class="lbl">과목</p>
+      <div class="chips" id="nSubj">
+        ${chip(!s.nSubjects.length, '전체', 'data-v=""')}
+        ${SUBJECTS.map(x => chip(s.nSubjects.includes(x.k), x.k, `data-v="${x.k}"`)).join('')}
+      </div>
+      <p class="lbl">연도</p>
+      <div class="chips" id="nYear">
+        ${chip(!s.nYears.length, '전체', 'data-v=""')}
+        ${YEARS.map(y => chip(s.nYears.includes(y), yy(y), `data-v="${y}"`)).join('')}
+      </div>
+      <p class="lbl">문제 수</p>
+      <div class="chips" id="nCount">
+        ${[10, 25].map(c => chip(s.nCount === c, String(c), `data-v="${c}"`)).join('')}
+        ${chip(s.nCount === 0, '전부', 'data-v="0"')}
+      </div>
+      <p class="lbl">풀기 순서</p>
+      <div class="chips" id="nOrder">
+        ${chip(s.nOrder === 'old', '오래 안 본 것 먼저', 'data-v="old"')}
+        ${chip(s.nOrder === 'random', '무작위', 'data-v="random"')}
+        ${chip(s.nOrder === 'wrong', '많이 틀린 것 먼저', 'data-v="wrong"')}
+      </div>
+      <button class="btn yellow start" type="button" id="solveBtn"${list.length ? '' : ' disabled'}>오답 풀기 ▶ ${solveN}문제</button>
+      <div class="nrow">
+        ${gradN || grad ? `<button type="button" class="chip grad${grad ? ' on' : ''}" id="gradBtn">🎓 졸업 후보 ${gradN}</button>` : '<span></span>'}
+        <select class="nsort" id="nSort" aria-label="목록 정렬">
+          <option value="new"${s.nSort === 'new' ? ' selected' : ''}>최근 넣은 순</option>
+          <option value="wrong"${s.nSort === 'wrong' ? ' selected' : ''}>많이 틀린 순</option>
+          <option value="old"${s.nSort === 'old' ? ' selected' : ''}>오래 안 본 순</option>
+        </select>
+      </div>
+      ${grad ? `<p class="hint">${GRAD}번 연속으로 맞힌 문제예요. 이제 알 것 같으면 [빼기]를 눌러 주세요.</p>` : ''}
+      ${list.length ? `<div id="list">${noteSort(list, s.nSort).map(id => listCard(QI[id], {
           tag: `<span class="tag ${state.note[id].tag}">${state.note[id].tag === 'x' ? '틀림' : '헷갈림'}</span>`,
-          btn: '<button type="button" class="mini" data-act="out">빼기</button>'
+          btn: `<button type="button" class="mini${isGrad(id) ? ' grad' : ''}" data-act="out">${isGrad(id) ? '🎓 빼기' : '빼기'}</button>`,
+          sub: `연속 맞힘 <b class="stk">${streak(id)}</b>${noteWrong(id) ? ` · 틀린 횟수 ${noteWrong(id)}` : ''}${isGrad(id) ? ' · <b class="gtxt">졸업 후보</b>' : ''}`
         })).join('')}</div>`
         : `<p class="empty">${all.length ? '이 조건에 맞는 문제가 없어요.' : '아직 비어 있어요.<br>문제를 푼 뒤 [오답노트에 넣기]를 누르면 여기에 모여요.'}</p>`}
     </div>`;
-  document.getElementById('seg').addEventListener('click', e => {
-    const b = e.target.closest('button'); if (!b) return;
-    view.data.filter = b.dataset.f; render();
+  const on = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
+  const chipOf = e => e.target.closest('.chip');
+  const multi = (id, key, num) => on(id, e => {
+    const b = chipOf(e); if (!b) return;
+    const v = b.dataset.v;
+    if (!v) s[key] = [];
+    else { const val = num ? Number(v) : v; s[key] = s[key].includes(val) ? s[key].filter(x => x !== val) : [...s[key], val]; }
+    saveState(); render();
   });
-  const sc = document.getElementById('subj');
-  if (sc) sc.addEventListener('click', e => {
-    const b = e.target.closest('.chip'); if (!b) return;
-    view.data.subj = b.dataset.v; render();
+  multi('nSubj', 'nSubjects', false);
+  multi('nYear', 'nYears', true);
+  on('nCount', e => { const b = chipOf(e); if (!b) return; s.nCount = Number(b.dataset.v); saveState(); render(); });
+  on('nOrder', e => { const b = chipOf(e); if (!b) return; s.nOrder = b.dataset.v; saveState(); render(); });
+  on('seg', e => { const b = e.target.closest('button'); if (!b) return; view.data.filter = b.dataset.f; render(); });
+  // 막대를 누르면 그 과목만 (한 번 더 누르면 전체)
+  on('bars', e => {
+    if (e.target.closest('#moreBars')) { view.data.moreBars = !view.data.moreBars; return render(); }
+    const b = e.target.closest('.nbar'); if (!b) return;
+    const k = b.dataset.v;
+    s.nSubjects = s.nSubjects.length === 1 && s.nSubjects[0] === k ? [] : [k];
+    saveState(); render();
   });
+  on('gradBtn', () => { view.data.grad = !grad; render(); });
+  document.getElementById('nSort').addEventListener('change', e => { s.nSort = e.target.value; saveState(); render(); });
   if (!list.length) return;
-  document.getElementById('solveBtn').addEventListener('click', () =>
-    startQuiz({ kind: 'note', title: `오답노트${subj ? ` · ${subj}` : ''}${f === 'x' ? ' · 틀림' : f === 'h' ? ' · 헷갈림' : ''}`, ids: shuffle(list.slice()) }));
+  on('solveBtn', () => {
+    const subj = s.nSubjects.length ? s.nSubjects.join('·') : '';
+    const yrs = s.nYears.length ? s.nYears.slice().sort().map(yy).join('·') + '년' : '';
+    const title = ['오답노트', subj, yrs, f === 'x' ? '틀림' : f === 'h' ? '헷갈림' : '', grad ? '졸업 후보' : ''].filter(Boolean).join(' · ');
+    startQuiz({ kind: 'note', title, ids: noteSort(list, s.nOrder).slice(0, solveN) });
+  });
   bindCards(document.getElementById('list'), render);
 }
 

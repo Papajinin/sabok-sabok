@@ -232,3 +232,22 @@ mark { background: var(--hl); color: inherit; }
   width: fit-content; margin: 0 auto;
   background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 14px; font-weight: 700; text-align: center;
 }
+
+/* 오답노트: 과목별 막대, 졸업 후보, 정렬 */
+.nbars { background: var(--card); border: 1.5px solid var(--line); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; }
+.nbar { display: flex; align-items: center; gap: 10px; width: 100%; padding: 5px 0; font-size: 14px; color: var(--navy); text-align: left; }
+.nbar span { width: 72px; flex: none; }
+.nbar i { flex: 1; height: 10px; background: var(--paper); border-radius: 5px; overflow: hidden; }
+.nbar i b { display: block; height: 100%; background: var(--accent); border-radius: 5px; }
+.nbar em { font-style: normal; font-weight: 800; width: 28px; text-align: right; flex: none; }
+.nbar.on span, .nbar.on em { font-weight: 900; color: var(--navy); }
+.nbar.on i { outline: 2px solid var(--navy); outline-offset: 1px; }
+.nbars .more { font-size: 13px; color: var(--muted); padding: 6px 0 2px; }
+.nrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 14px 0 8px; }
+.chip.grad { border-color: var(--pale-line); background: var(--pale); color: var(--navy); font-weight: 700; }
+.chip.grad.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+.nsort { font: inherit; font-size: 14px; color: var(--navy); background: var(--card); border: 1.5px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+.card .sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.card .sub .stk { color: var(--navy); letter-spacing: 1px; }
+.card .sub .gtxt { color: var(--navy); }
+.mini.grad { background: var(--pale); border-color: var(--pale-line); color: var(--navy); font-weight: 700; }
