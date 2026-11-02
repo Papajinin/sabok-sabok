@@ -26,6 +26,7 @@ function boot() {
   firebase.initializeApp(FIREBASE_CONFIG);
   cloud.auth = firebase.auth();
   cloud.db = firebase.firestore();
+  cloud.db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); // Safari·아이폰에서 연결이 멈추는 것 막기
   cloud.db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
   cloud.auth.getRedirectResult().catch(showLoginError);
   cloud.auth.onAuthStateChanged(user => {
@@ -99,8 +100,14 @@ function startCloud(user) {
   if (prev && prev !== user.uid) { state = defaultState(); saveLocal(); }
   try { localStorage.setItem(UID_KEY, user.uid); } catch (e) {}
 
-  // 1) 문제 (허락된 계정이 아니면 여기서 막힘)
+  // 1) 문제 (허락된 계정이 아니면 여기서 막힘). 20초가 넘으면 안내
+  loginEl.hidden = true;
+  appEl.innerHTML = '<div class="empty">문제를 불러오는 중…<br>처음 한 번은 조금 걸려요.</div>';
+  const slow = setTimeout(() => {
+    if (!Q.length) appEl.innerHTML = '<div class="empty">문제를 불러오지 못하고 있어요.<br>인터넷 연결을 확인하고 앱을 다시 열어 주세요.</div>';
+  }, 20000);
   cloud.db.collection('exams').get().then(snap => {
+    clearTimeout(slow);
     loginEl.hidden = true;
     const docs = [];
     snap.forEach(d => docs.push(d.data()));

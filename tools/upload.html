@@ -32,7 +32,7 @@
     else {
       firebase.initializeApp(FIREBASE_CONFIG);
       const auth = firebase.auth(), db = firebase.firestore();
-      db.settings({ experimentalAutoDetectLongPolling: true }); // Safari에서 연결이 멈추는 것 막기
+      db.settings({ experimentalAutoDetectLongPolling: true, merge: true }); // Safari에서 연결이 멈추는 것 막기
       document.getElementById('login').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => log('로그인 실패: ' + e.code));
       auth.onAuthStateChanged(u => {
         document.getElementById('step2').hidden = !u;
