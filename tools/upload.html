@@ -15,11 +15,10 @@
 <body>
   <!-- 맥에서 만든 data/연도.json을 Firebase(exams/연도)에 올리는 화면. 앱 주소 뒤에 /tools/upload.html -->
   <h1>사복사복 문제 올리기</h1>
-  <p>1) 로그인 → 2) <b>data 폴더</b>의 <code>연도.json</code> 파일을 고르기 (여러 개 가능) → 3) 올리기.<br>같은 연도를 다시 올리면 새 파일로 바뀌어요.</p>
+  <p>맥에서 <code>http://localhost:8777/tools/upload.html</code>로 열고 1) 로그인 → 2) 올리기.<br>맥의 <b>data 폴더</b>에 있는 연도 파일을 모두 찾아서 올려요. 같은 연도를 다시 올리면 새 것으로 바뀌어요.</p>
   <button id="login" type="button">구글로 로그인</button>
   <div id="step2" hidden>
-    <input id="files" type="file" accept=".json" multiple>
-    <br><button id="send" type="button">올리기</button>
+    <button id="send" type="button">맥에 있는 문제 모두 올리기</button>
   </div>
   <div id="log">로그인해 주세요.</div>
 
@@ -33,20 +32,29 @@
     else {
       firebase.initializeApp(FIREBASE_CONFIG);
       const auth = firebase.auth(), db = firebase.firestore();
+      db.settings({ experimentalAutoDetectLongPolling: true }); // Safari에서 연결이 멈추는 것 막기
       document.getElementById('login').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => log('로그인 실패: ' + e.code));
       auth.onAuthStateChanged(u => {
         document.getElementById('step2').hidden = !u;
         if (u) log(`${u.email}로 로그인했어요. 파일을 골라 주세요.`);
       });
       document.getElementById('send').onclick = async () => {
-        const files = [...document.getElementById('files').files];
-        if (!files.length) return log('파일을 골라 주세요.');
+        // 맥의 data/연도.json을 직접 읽음 (파일 고르기 없이)
+        log('맥에서 문제 파일을 찾는 중…');
+        const files = [];
+        for (let y = 2018; y <= 2030; y++) {
+          const r = await fetch(`../data/${y}.json`, { cache: 'no-store' }).catch(() => null);
+          if (r && r.ok) files.push({ name: `${y}.json`, text: () => r.text() });
+        }
+        if (!files.length) return log('맥의 data 폴더에서 문제 파일을 찾지 못했어요.');
         const out = [];
         for (const f of files) {
           try {
+            log(out.concat(`⏳ ${f.name} 올리는 중…`).join('\n'));
             const d = JSON.parse(await f.text());
             if (!d.year || !Array.isArray(d.questions)) throw new Error('문제 파일이 아니에요');
-            await db.collection('exams').doc(String(d.year)).set(d);
+            const timeout = new Promise((_, no) => setTimeout(() => no(new Error('30초 안에 끝나지 않았어요 (인터넷 연결 확인)')), 30000));
+            await Promise.race([db.collection('exams').doc(String(d.year)).set(d), timeout]);
             out.push(`✅ ${d.year}년 ${d.questions.length}문제`);
           } catch (e) {
             out.push(`❌ ${f.name}: ${e.code === 'permission-denied' ? '이 계정은 올릴 수 없어요' : e.message}`);
