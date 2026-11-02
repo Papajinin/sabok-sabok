@@ -216,11 +216,11 @@ function renderMockResult() {
 // ---------- 기록 ----------
 function renderStats() {
   const p = roundProgress();
-  const since = new Date(state.statsSince);
-  const rates = SUBJECTS.map(s => {
-    let c = 0, w = 0;
-    Q.forEach(q => { if (q.subject === s.k && state.rec[q.id]) { c += state.rec[q.id].c; w += state.rec[q.id].w; } });
-    return { s, c, w, pct: c + w ? Math.round(c / (c + w) * 100) : null };
+  // 과목별 진행률: 이번 회독에서 푼 문제 (맞았든 틀렸든)
+  const progs = SUBJECTS.map(s => {
+    const all = Q.filter(q => q.subject === s.k);
+    const done = all.filter(q => solvedNow(q.id)).length;
+    return { s, done, total: all.length, pct: all.length ? done / all.length * 100 : 0 };
   });
   const user = typeof cloudUserEmail === 'function' ? cloudUserEmail() : '';
   appEl.innerHTML = `
@@ -236,13 +236,12 @@ function renderStats() {
         ${state.rounds.map(r => { const d = new Date(r.at); return `<div class="row-line">${r.n}회독 완료<span>${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}</span></div>`; }).join('')}
       </div>
       <div class="section">
-        <h3>과목별 정답률</h3>
-        ${rates.map(r => `<div class="rate">
-            <div class="rate-top"><b>${r.s.k}</b><span>${r.pct === null ? '아직 안 풂' : `${r.pct}% · 맞힘 ${r.c} / 푼 ${r.c + r.w}`}</span></div>
-            <div class="bar"><i class="${r.pct !== null && r.pct < 60 ? 'weak' : ''}" style="width:${r.pct || 0}%"></i></div>
+        <h3>과목별 진행률</h3>
+        ${progs.map(r => `<div class="rate">
+            <div class="rate-top"><b>${r.s.k}</b><span>${r.done} / ${r.total} 풀었음 · ${Math.floor(r.pct)}%</span></div>
+            <div class="bar"><i style="width:${r.pct.toFixed(1)}%"></i></div>
           </div>`).join('')}
-        <p class="small-note">${since.getFullYear()}.${since.getMonth() + 1}.${since.getDate()}부터 센 정답률이에요. 60% 아래는 빨간 막대.</p>
-        <button class="btn danger start" type="button" id="resetBtn">정답률 초기화</button>
+        <p class="small-note">${state.round}회독에서 푼 문제예요. 맞았든 틀렸든 풀면 들어가요.</p>
       </div>
       ${state.mocks.length ? `<div class="section"><h3>모의고사 기록</h3>${state.mocks.slice().reverse().map(mockLine).join('')}</div>` : ''}
       <div class="section">
@@ -253,13 +252,6 @@ function renderStats() {
       </div>
     </div>`;
   document.getElementById('examDate').addEventListener('change', e => { state.settings.examDate = e.target.value; saveState(); render(); });
-  document.getElementById('resetBtn').addEventListener('click', () => showSheet('과목별 정답률을 0부터 다시 셀까요? 회독·오답노트는 그대로예요.', [{
-    label: '초기화', cls: 'danger', fn: () => {
-      Object.values(state.rec).forEach(r => { r.c = 0; r.w = 0; });
-      state.statsSince = Date.now();
-      saveState(); render(); toast('정답률을 초기화했어요');
-    }
-  }]));
   const lo = document.getElementById('logoutBtn');
   if (lo) lo.addEventListener('click', () => showSheet('로그아웃할까요? 다시 로그인하면 기록이 그대로 돌아와요.', [{ label: '로그아웃', cls: 'danger', fn: cloudSignOut }]));
 }
