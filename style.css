@@ -130,6 +130,10 @@ input { font: inherit; color: inherit; }
   padding: 10px 12px; margin: 4px 0 12px; font-size: 15px; line-height: 1.6; word-break: keep-all;
 }
 .box div + div { margin-top: 3px; }
+.box.tbl { padding: 4px; overflow-x: auto; }
+.box.tbl img { display: block; width: 100%; min-width: 520px; height: auto; }
+.box.tbl::after { content: "← 옆으로 밀어서 보기 →"; display: block; text-align: center; font-size: 12px; color: var(--muted); padding: 4px 0 2px; position: sticky; left: 0; }
+.multi { font-size: 13px; color: var(--muted); margin: -4px 0 10px; }
 .opt {
   display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; width: 100%; text-align: left;
   border: 1.5px solid var(--line); background: var(--card); border-radius: 8px;

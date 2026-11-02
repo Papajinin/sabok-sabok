@@ -296,10 +296,16 @@ function questionHtml(q) {
     if (p.t === 'p') {
       const t = esc(p.text).replace(NEG, '<span class="hl">$1</span>');
       html += i === 0 ? `<p class="q">${q.no}. ${t}</p>` : `<p class="q-after">${t}</p>`;
+    } else if (p.img) {
+      // 표는 원본을 잘라 둔 그림으로 (글자는 검색용)
+      html += `<div class="box tbl"><img src="${p.img}" alt="${esc(p.lines.join(' '))}"></div>`;
     } else {
       html += `<div class="box">${p.lines.map(l => `<div>${esc(l)}</div>`).join('')}</div>`;
     }
   });
+  if (q.answer.length > 1) {
+    html += `<p class="multi">※ 최종 정답에서 ${q.answer.length === 5 ? '모두 정답' : '정답 여러 개'}으로 처리된 문제예요</p>`;
+  }
   return html;
 }
 
