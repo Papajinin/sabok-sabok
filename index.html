@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- 홈 화면 앱: 상태 표시줄은 따로, 아이콘 이름은 SABOK -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="SABOK">
+  <meta name="theme-color" content="#1E2A4A">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=1">
+  <link rel="icon" type="image/png" href="apple-touch-icon.png?v=1">
+  <title>SABOK SABOK</title>
+  <script>
+    // 새 버전 스스로 받기: 켤 때 서버의 version.txt 숫자가 APP_VERSION보다 크면 새 파일을 받아 한 번 새로고침.
+    // 올릴 때마다 두 숫자를 같이 올린다
+    const APP_VERSION = 1;
+    (function () {
+      const t0 = Date.now();
+      const key = 'sabok.updated';
+      fetch('version.txt?t=' + t0, { cache: 'no-store' })
+        .then(r => r.ok ? r.text() : '')
+        .then(txt => {
+          const v = parseInt(txt, 10);
+          if (!(v > APP_VERSION) || Date.now() - t0 > 4000) return;
+          try { if (sessionStorage.getItem(key) === String(v)) return; sessionStorage.setItem(key, String(v)); } catch (e) { return; }
+          return Promise.all([fetch(location.pathname, { cache: 'reload' }), fetch('index.html', { cache: 'reload' })])
+            .then(() => { if (Date.now() - t0 < 6000) location.reload(); });
+        })
+        .catch(() => {});
+    })();
+  </script>
+  <link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+  <!-- 시작 화면 (앱을 열 때 약 1.6초): 왼발 → 오른발 → 이름 → 合格 도장 -->
+  <div class="splash" id="splash" aria-hidden="true">
+    <div class="walk">
+      <svg viewBox="0 0 40 80" class="ft l"><use href="#shoe"/></svg>
+      <svg viewBox="0 0 40 80" class="ft r"><use href="#shoe"/></svg>
+    </div>
+    <div class="s-title">SABOK<br>SABOK</div>
+    <div class="s-sub">사회복지사 1급, 사복사복 즈려밟자</div>
+    <div class="stamp">合格</div>
+    <div class="band">2027 합격 대비 · 사회복지사 1급 기출</div>
+  </div>
+
+  <!-- 신발 밑창 그림 (시작 화면에서 씀) -->
+  <svg width="0" height="0" style="position:absolute">
+    <symbol id="shoe" viewBox="0 0 40 80">
+      <path fill="#F4F6FB" d="M22 2C32 2 38 11 37 25C36 38 31 47 21 47C11 47 5 39 5 27C5 13 11 2 22 2Z"/>
+      <path fill="#F4F6FB" d="M8 55C8 51 31 51 31 55L31 69C31 77 8 77 8 69Z"/>
+      <g stroke="#1E2A4A" stroke-width="2.2" stroke-linecap="round">
+        <line x1="11" y1="13" x2="32" y2="12"/><line x1="8" y1="21" x2="35" y2="20"/><line x1="7" y1="29" x2="35" y2="28"/><line x1="8" y1="37" x2="33" y2="36"/>
+        <line x1="12" y1="60" x2="27" y2="60"/><line x1="12" y1="67" x2="27" y2="67"/>
+      </g>
+    </symbol>
+  </svg>
+
+  <!-- 로그인 화면 (Firebase를 연결하면) -->
+  <div class="login" id="login" hidden>
+    <div class="login-title">SABOK SABOK</div>
+    <p class="login-sub">문제는 허락된 계정에서만 보여요.</p>
+    <button class="btn yellow" id="loginBtn" type="button">구글로 로그인</button>
+    <p class="login-error" id="loginError" hidden></p>
+  </div>
+
+  <!-- 화면: 그때그때 그림 -->
+  <div class="app" id="app"></div>
+
+  <!-- 아래 탭 -->
+  <nav class="tabs" id="tabs">
+    <button type="button" data-tab="home"><b>🏠</b>홈</button>
+    <button type="button" data-tab="note"><b>📝</b><span id="noteTabLabel">오답</span></button>
+    <button type="button" data-tab="search"><b>🔍</b>검색</button>
+    <button type="button" data-tab="mock"><b>⏱</b>모의고사</button>
+    <button type="button" data-tab="stats"><b>📊</b>기록</button>
+  </nav>
+
+  <!-- 아래에서 올라오는 선택 창 -->
+  <div class="overlay" id="sheet" hidden>
+    <div class="sheet" role="dialog" aria-modal="true">
+      <div class="sheet-msg" id="sheetMsg"></div>
+      <div class="sheet-body" id="sheetBody"></div>
+      <button class="btn ghost" id="sheetCancel" type="button">취소</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="sync-config.js?v=1"></script>
+  <script src="app.js?v=1"></script>
+  <script src="views.js?v=1"></script>
+  <script src="sync.js?v=1"></script>
+</body>
+</html>

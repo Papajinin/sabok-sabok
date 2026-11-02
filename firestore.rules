@@ -1,0 +1,25 @@
+rules_version = '2';
+
+// 사복사복: 아빠 구글 계정만 문제를 읽고, 자기 풀이 기록만 읽고 쓸 수 있음
+// 고친 뒤에는 Firebase 관리 화면 → Firestore → 규칙에 붙여 넣고 "게시"
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isMe() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in [
+          'aristo0517@gmail.com'   // 아빠
+        ];
+    }
+
+    // 문제 (연도마다 문서 하나). 올리기는 tools/upload.html
+    match /exams/{year} {
+      allow read, write: if isMe();
+    }
+
+    // 풀이 기록
+    match /users/{uid} {
+      allow read, write: if isMe() && request.auth.uid == uid;
+    }
+  }
+}

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>사복사복 문제 올리기</title>
+  <style>
+    body { font-family: -apple-system, "Apple SD Gothic Neo", sans-serif; background: #F7F5EF; color: #1E2A4A; max-width: 520px; margin: 0 auto; padding: 24px 16px; line-height: 1.6; }
+    h1 { font-size: 22px; }
+    button { font: inherit; font-weight: 800; border-radius: 10px; padding: 12px 16px; border: 1.5px solid #E2CF62; background: #FFF3B0; color: #1E2A4A; cursor: pointer; }
+    input[type=file] { margin: 12px 0; }
+    #log { white-space: pre-wrap; background: #fff; border: 1.5px solid #E2DFD5; border-radius: 10px; padding: 12px; margin-top: 16px; font-size: 14px; min-height: 60px; }
+  </style>
+</head>
+<body>
+  <!-- 맥에서 만든 data/연도.json을 Firebase(exams/연도)에 올리는 화면. 앱 주소 뒤에 /tools/upload.html -->
+  <h1>사복사복 문제 올리기</h1>
+  <p>1) 로그인 → 2) <b>data 폴더</b>의 <code>연도.json</code> 파일을 고르기 (여러 개 가능) → 3) 올리기.<br>같은 연도를 다시 올리면 새 파일로 바뀌어요.</p>
+  <button id="login" type="button">구글로 로그인</button>
+  <div id="step2" hidden>
+    <input id="files" type="file" accept=".json" multiple>
+    <br><button id="send" type="button">올리기</button>
+  </div>
+  <div id="log">로그인해 주세요.</div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="../sync-config.js"></script>
+  <script>
+    const log = t => { document.getElementById('log').textContent = t; };
+    if (!FIREBASE_CONFIG.apiKey) log('아직 Firebase가 연결되지 않았어요 (sync-config.js).');
+    else {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      const auth = firebase.auth(), db = firebase.firestore();
+      document.getElementById('login').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => log('로그인 실패: ' + e.code));
+      auth.onAuthStateChanged(u => {
+        document.getElementById('step2').hidden = !u;
+        if (u) log(`${u.email}로 로그인했어요. 파일을 골라 주세요.`);
+      });
+      document.getElementById('send').onclick = async () => {
+        const files = [...document.getElementById('files').files];
+        if (!files.length) return log('파일을 골라 주세요.');
+        const out = [];
+        for (const f of files) {
+          try {
+            const d = JSON.parse(await f.text());
+            if (!d.year || !Array.isArray(d.questions)) throw new Error('문제 파일이 아니에요');
+            await db.collection('exams').doc(String(d.year)).set(d);
+            out.push(`✅ ${d.year}년 ${d.questions.length}문제`);
+          } catch (e) {
+            out.push(`❌ ${f.name}: ${e.code === 'permission-denied' ? '이 계정은 올릴 수 없어요' : e.message}`);
+          }
+          log(out.join('\n'));
+        }
+      };
+    }
+  </script>
+</body>
+</html>

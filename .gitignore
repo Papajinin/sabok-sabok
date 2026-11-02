@@ -1,0 +1,4 @@
+# 문제 데이터는 저작권 때문에 GitHub에 올리지 않음 (Firebase에만)
+data/
+.DS_Store
+__pycache__/
