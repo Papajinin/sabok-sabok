@@ -1,4 +1,4 @@
-/* 사복사복: 남색 + 종이색 + 연노랑 (시안 B). 진한 노랑은 시작 화면 띠지에만 */
+/* 사복사복: 남색 + 종이색 + 민트 포인트. 진한 노랑은 시작 화면 띠지에만 */
 :root {
   --navy: #1E2A4A;
   --navy-2: #2C3E6B;
@@ -7,9 +7,10 @@
   --line: #E2DFD5;
   --muted: #5B6478;          /* 종이색 위 5.4, 흰색 위 5.9 */
   --on-navy-muted: #C9D1E3;  /* 남색 위 9.2 */
-  --yellow: #FFE45C;         /* 시작 화면 띠지, 남색 위 진행 막대 */
-  --pale: #FFF3B0;           /* 연노랑 버튼 (남색 글씨 12.6) */
-  --pale-line: #E2CF62;
+  --yellow: #FFE45C;         /* 시작 화면 띠지 (노랑 그대로) */
+  --accent: #6FD6A6;         /* 남색 위 진행 막대 (민트, 남색과 대비 8.0) */
+  --pale: #D3EEDF;           /* 연민트 버튼·D-day (남색 글씨 11.5) */
+  --pale-line: #8FCBAE;
   --red: #B3261E;  --red-bg: #FDECEA;
   --green: #17663F; --green-bg: #E6F4EC;
   --stamp: #E5484D;
@@ -82,7 +83,7 @@ input { font: inherit; color: inherit; }
 .dday { background: var(--pale); color: var(--navy); font-weight: 900; font-size: 15px; padding: 3px 10px; border-radius: 4px; }
 .prog-t { font-size: 13px; color: var(--on-navy-muted); margin-top: 10px; }
 .bar { height: 8px; background: var(--navy-2); border-radius: 4px; margin-top: 6px; overflow: hidden; }
-.bar i { display: block; height: 100%; background: var(--yellow); border-radius: 4px; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
 .body { padding: 14px 16px; }
 
 .lbl { font-size: 13px; font-weight: 700; color: var(--muted); margin: 16px 0 7px; }
@@ -119,8 +120,8 @@ input { font: inherit; color: inherit; }
 .qhead .back { color: #fff; font-weight: 800; padding: 4px 8px 4px 0; font-size: 15px; }
 .qhead .where { color: var(--on-navy-muted); text-align: right; }
 .qbar { height: 4px; background: var(--navy-2); margin: 10px -16px -12px; }
-.qbar i { display: block; height: 100%; background: var(--yellow); }
-.timer { font-weight: 900; font-variant-numeric: tabular-nums; color: var(--yellow); font-size: 16px; }
+.qbar i { display: block; height: 100%; background: var(--accent); }
+.timer { font-weight: 900; font-variant-numeric: tabular-nums; color: var(--accent); font-size: 16px; }
 .timer.low { color: #FF9C96; }
 .q { font-size: 16px; font-weight: 700; line-height: 1.6; margin-bottom: 10px; word-break: keep-all; }
 .q-after { font-size: 15px; line-height: 1.6; margin: 8px 0 10px; word-break: keep-all; }
