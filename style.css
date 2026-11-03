@@ -251,3 +251,38 @@ mark { background: var(--hl); color: inherit; }
 .card .sub .stk { color: var(--navy); letter-spacing: 1px; }
 .card .sub .gtxt { color: var(--navy); }
 .mini.grad { background: var(--pale); border-color: var(--pale-line); color: var(--navy); font-weight: 700; }
+
+/* 머리 오른쪽 작은 버튼 (O/X → 검색) */
+.head-btn { background: rgba(255,255,255,.12); color: #fff; font-weight: 700; font-size: 14px; padding: 6px 12px; border-radius: 6px; }
+
+/* 해설 */
+.exp { background: var(--card); border: 1.5px solid var(--pale-line); border-left: 5px solid var(--accent); border-radius: 10px; padding: 12px 14px; margin-top: 12px; }
+.exp b { display: block; font-size: 14px; color: var(--navy); margin-bottom: 4px; }
+.exp p { font-size: 15px; line-height: 1.65; word-break: keep-all; }
+
+/* O/X */
+.ox-topic { font-size: 14px; color: var(--muted); font-weight: 700; margin: 4px 0 10px; word-break: keep-all; }
+.ox-card { background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 22px 18px; font-size: 18px; font-weight: 700; line-height: 1.6; word-break: keep-all; min-height: 120px; }
+.ox-card.o { border-color: var(--green); background: var(--green-bg); }
+.ox-card.x { border-color: var(--red); background: var(--red-bg); }
+.ox-btns { display: flex; gap: 12px; margin-top: 16px; }
+.ox-b { flex: 1; height: 72px; border-radius: 12px; font-size: 34px; font-weight: 900; background: var(--card); border: 2px solid var(--navy); color: var(--navy); }
+.ox-b:active { background: var(--pale); }
+.ox-res { margin-top: 12px; font-size: 15px; font-weight: 700; }
+.ox-res.ok { color: var(--green); }
+.ox-res.no { color: var(--red); }
+
+/* 글자 크기: 크게(1), 아주 크게(2) */
+body[data-fs="1"] .q { font-size: 18px; }
+body[data-fs="1"] .q-after, body[data-fs="1"] .box, body[data-fs="1"] .opt, body[data-fs="1"] .exp p { font-size: 17px; }
+body[data-fs="1"] .ox-card { font-size: 20px; }
+body[data-fs="2"] .q { font-size: 20px; }
+body[data-fs="2"] .q-after, body[data-fs="2"] .box, body[data-fs="2"] .opt, body[data-fs="2"] .exp p { font-size: 19px; }
+body[data-fs="2"] .ox-card { font-size: 22px; }
+
+/* 해설 확인 요청 */
+.exp-foot { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 8px; }
+.exp-foot span { font-size: 13px; font-weight: 800; color: var(--red); margin-right: auto; }
+.exp-flag { font-size: 13px; color: var(--muted); border: 1.5px solid var(--line); border-radius: 6px; padding: 4px 10px; background: var(--card); }
+.exp.flagged { border-color: #E9B4AE; border-left-color: var(--red); }
+.flag-note { width: 100%; font: inherit; font-size: 16px; border: 1.5px solid var(--line); border-radius: 8px; padding: 10px; margin-bottom: 10px; resize: vertical; }

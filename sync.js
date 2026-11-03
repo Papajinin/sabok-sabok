@@ -49,7 +49,9 @@ function splash() {
 function loadLocalData() {
   const years = [];
   for (let y = 2018; y <= 2030; y++) years.push(y);
-  Promise.all(years.map(y => fetch(`data/${y}.json`).then(r => r.ok ? r.json() : null).catch(() => null)))
+  Promise.all(years.map(y => fetch(`data/${y}.json`).then(r => r.ok ? r.json() : null).catch(() => null)
+    .then(d => d && fetch(`data/explain/${y}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({}))
+      .then(ex => { d.questions.forEach(q => { if (ex[q.id]) q.exp = ex[q.id]; }); return d; }))))
     .then(list => {
       const docs = list.filter(Boolean);
       if (!docs.length) {
@@ -184,3 +186,11 @@ function cloudSignOut() {
 }
 
 boot();
+
+// 해설 확인 요청: 엄마·아빠가 같이 보는 공용 칸(reports/문제id). data가 없으면 지움
+function cloudReport(id, data) {
+  if (!cloud.db || !cloud.user) return;
+  const ref = cloud.db.collection('reports').doc(id);
+  (data ? ref.set({ id, note: data.note, exp: data.exp, by: cloud.user.email || '', at: Date.now() }) : ref.delete())
+    .catch(err => { console.warn(err); toast('요청을 저장하지 못했어요. 인터넷 연결을 확인해 주세요'); });
+}

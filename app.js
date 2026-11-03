@@ -30,11 +30,17 @@ function defaultState() {
   return {
     settings: { examDate: EXAM_DATE, subjects: [], years: [], count: 25, order: 'unsolved',
       // 오답노트 고르기: 과목·연도(여러 개), 문제 수(0=전부), 풀기 순서(old/random/wrong), 목록 정렬(new/wrong/old)
-      nSubjects: [], nYears: [], nCount: 10, nOrder: 'old', nSort: 'new' },
+      nSubjects: [], nYears: [], nCount: 10, nOrder: 'old', nSort: 'new',
+      // O/X: 방식(quiz 풀기 / read 맞는 문장만 읽기), 과목·연도, 개수(0=전부)
+      oxMode: 'quiz', oxSubjects: [], oxYears: [], oxCount: 20,
+      // 섞은 모의고사: 교시(1·2·3, 0=전체), 문제 고르기(random/unsolved/note)
+      mixSession: 1, mixSrc: 'random',
+      font: 0 },          // 글자 크기 0 보통, 1 크게, 2 아주 크게
     round: 1,          // 지금 몇 회독째
     rounds: [],        // 끝낸 회독 [{ n, at }]
     rec: {},           // 문제 id → { r: 마지막으로 푼 회독, a: 고른 답, ok, c: 맞힌 횟수, w: 틀린 횟수, t }
     note: {},          // 오답노트: 문제 id → { tag: 'x'(틀림) | 'h'(헷갈림), at, s: 넣은 뒤 연속 맞힘 }
+    expFlags: {},      // 해설 확인 요청: 문제 id → { at, note, exp: 요청할 때의 해설 }
     resume: null,      // 풀던 묶음 (이어 풀기)
     mocks: [],         // 모의고사 기록
     statsSince: Date.now(), // 정답률을 센 시작 시각 (초기화하면 바뀜)
@@ -74,6 +80,8 @@ function setQuestions(list, rounds) {
   // 없어진 연도는 고른 목록에서 뺌
   state.settings.years = state.settings.years.filter(y => YEARS.includes(y));
   state.settings.nYears = state.settings.nYears.filter(y => YEARS.includes(y));
+  state.settings.oxYears = state.settings.oxYears.filter(y => YEARS.includes(y));
+  if (typeof oxItems !== 'undefined') oxItems = null;
 }
 
 // ---------- 도구 ----------
@@ -140,6 +148,7 @@ function go(tab, screen, data) {
 }
 function render() {
   if (!Q.length) { appEl.innerHTML = '<div class="empty">문제를 불러오는 중…</div>'; return; }
+  document.body.dataset.fs = state.settings.font || 0; // 글자 크기
   const full = view.screen; // 문제 푸는 화면 등은 아래 탭을 숨김
   tabsEl.hidden = !!full;
   appEl.classList.toggle('no-tabs', !!full);
@@ -149,7 +158,9 @@ function render() {
   if (view.screen === 'quiz') return renderQuiz();
   if (view.screen === 'result') return renderResult();
   if (view.screen === 'mockResult') return renderMockResult();
-  ({ home: renderHome, note: renderNote, search: renderSearch, mock: renderMock, stats: renderStats })[view.tab]();
+  if (view.screen === 'ox') return renderOXRun();
+  if (view.screen === 'oxResult') return renderOXResult();
+  ({ home: renderHome, note: renderNote, ox: renderOX, mock: renderMock, stats: renderStats })[view.tab]();
 }
 tabsEl.addEventListener('click', e => {
   const b = e.target.closest('button[data-tab]');
@@ -276,6 +287,7 @@ function startPractice() {
 function startQuiz(opts) {
   const run = { idx: 0, picks: {}, startedAt: Date.now(), ...opts };
   if (run.kind === 'single') {
+    run.prev = view; // 닫으면 보던 화면으로
     view = { tab: view.tab, screen: 'quiz', data: { run } };
   } else {
     state.resume = run;
@@ -338,12 +350,13 @@ function checkRound() {
 function renderQuiz() {
   const run = view.data.run;
   const mock = run.kind === 'mock';
-  if (mock && Date.now() > run.endsAt) return submitMock(true);
+  if (mock && Date.now() > run.endsAt) return stageEnd(run, true);
+  const stg = mock ? stageOf(run) : null;
   const id = run.ids[run.idx];
   const q = QI[id];
   const picked = run.picks[id];
   const shown = !mock && picked !== undefined;
-  const pct = (run.idx + (shown ? 1 : 0)) / run.ids.length * 100;
+  const pct = mock ? (run.idx - stageOf(run).from) / (stageOf(run).to - stageOf(run).from) * 100 : (run.idx + (shown ? 1 : 0)) / run.ids.length * 100;
   const opts = q.choices.map((c, i) => {
     const n = i + 1;
     let cls = '', tag = '';
@@ -357,13 +370,14 @@ function renderQuiz() {
   const inNote = state.note[id];
   let actions = '';
   if (mock) {
-    const last = run.idx === run.ids.length - 1;
+    const last = run.idx === stg.to - 1;
+    const sub = hasNextStage(run) ? `${stg.session}교시 제출 → 다음 교시` : '제출하기';
     actions = `<div class="mock-nav">
-        <button class="btn ghost" type="button" id="prevBtn"${run.idx ? '' : ' disabled'}>←</button>
+        <button class="btn ghost" type="button" id="prevBtn"${run.idx > stg.from ? '' : ' disabled'}>←</button>
         <button class="btn ghost grid-btn" type="button" id="gridBtn">번호판</button>
-        ${last ? '<button class="btn navy" type="button" id="submitBtn">제출</button>' : '<button class="btn navy" type="button" id="nextBtn">→</button>'}
+        ${last ? `<button class="btn navy" type="button" id="submitBtn">${hasNextStage(run) ? '다음 교시' : '제출'}</button>` : '<button class="btn navy" type="button" id="nextBtn">→</button>'}
       </div>
-      ${last ? '' : '<button class="btn yellow next" type="button" id="submitBtn">제출하기</button>'}`;
+      ${last ? '' : `<button class="btn yellow next" type="button" id="submitBtn">${sub}</button>`}`;
   } else if (shown) {
     actions = `<div class="acts">
         <button class="btn line" type="button" id="noteBtn">${inNote ? `📝 오답노트에 있음 (${inNote.tag === 'x' ? '틀림' : '헷갈림'})` : '📝 오답노트에 넣기'}</button>
@@ -376,7 +390,7 @@ function renderQuiz() {
   appEl.innerHTML = `
     <div class="head">
       <div class="qhead">
-        <button class="back" type="button" id="backBtn">← ${run.kind === 'single' ? '' : `${run.idx + 1} / ${run.ids.length}`}</button>
+        <button class="back" type="button" id="backBtn">← ${run.kind === 'single' ? '' : mock ? `${run.stages && run.stages.length > 1 ? `${stg.session}교시 ` : ''}${run.idx - stg.from + 1} / ${stg.to - stg.from}` : `${run.idx + 1} / ${run.ids.length}`}</button>
         ${mock ? `<span class="timer" id="timer"></span>` : ''}
         <span class="where">${esc(where(q))}</span>
       </div>
@@ -385,12 +399,14 @@ function renderQuiz() {
     <div class="body">
       ${questionHtml(q)}
       <div id="opts">${opts}</div>
+      ${shown ? expHtml(q, `💡 해설 · 정답 ${q.answer.map(n => MARKS[n - 1]).join(', ')}`) : ''}
       ${actions}
+      ${shown ? similarHtml(q) : ''}
     </div>`;
 
   document.getElementById('backBtn').addEventListener('click', () => {
     stopTimer();
-    if (run.kind === 'single') return go(view.tab, null);
+    if (run.kind === 'single') return closeSingle(run);
     go(view.tab);
     if (run.kind !== 'mock') toast('이어 풀기로 다시 시작할 수 있어요');
   });
@@ -423,17 +439,23 @@ function renderQuiz() {
   if (!shown) return;
   document.getElementById('noteBtn').addEventListener('click', () => noteMenu(id, picked !== undefined && !q.answer.includes(picked), renderQuiz));
   document.getElementById('aiBtn').addEventListener('click', () => copyForAI(q, picked));
+  bindExp(q, renderQuiz);
+  bindSimilar();
   const next = document.getElementById('nextBtn');
   if (next) next.addEventListener('click', () => {
     if (run.idx < run.ids.length - 1) { run.idx++; saveState(); renderQuiz(); window.scrollTo(0, 0); }
     else finishPractice(run);
   });
   const done = document.getElementById('doneBtn');
-  if (done) done.addEventListener('click', () => go(view.tab, null));
+  if (done) done.addEventListener('click', () => closeSingle(run));
 }
 
+function closeSingle(run) {
+  if (run.prev) { view = run.prev; render(); } else go(view.tab, null);
+}
 function moveTo(run, i) {
-  run.idx = Math.max(0, Math.min(run.ids.length - 1, i));
+  const lo = run.kind === 'mock' ? stageOf(run).from : 0, hi = run.kind === 'mock' ? stageOf(run).to - 1 : run.ids.length - 1;
+  run.idx = Math.max(lo, Math.min(hi, i));
   saveState();
   renderQuiz();
   window.scrollTo(0, 0);
@@ -455,6 +477,40 @@ function noteMenu(id, wasWrong, after) {
   showSheet('오답노트에 어떻게 넣을까요?', wasWrong ? [x, h] : [h, x]);
 }
 
+// ---------- 해설 + 해설 확인 요청 ----------
+// 요청할 때의 해설과 지금 해설이 다르면 고쳐진 것 → 표시를 없앰
+function expFlag(q) {
+  const f = state.expFlags[q.id];
+  return f && f.exp === q.exp ? f : null;
+}
+function expHtml(q, title) {
+  if (!q.exp) return '';
+  const f = expFlag(q);
+  return `<div class="exp${f ? ' flagged' : ''}"><b>${title}</b><p>${esc(q.exp)}</p>
+    <div class="exp-foot">${f ? '<span>⚑ 확인 요청함</span>' : ''}<button type="button" class="exp-flag" id="expFlag">${f ? '요청 취소' : '해설이 이상해요 ⚑'}</button></div></div>`;
+}
+function bindExp(q, after) {
+  const b = document.getElementById('expFlag');
+  if (!b) return;
+  b.addEventListener('click', () => {
+    if (expFlag(q)) {
+      delete state.expFlags[q.id];
+      saveState();
+      if (typeof cloudReport === 'function') cloudReport(q.id, null);
+      toast('확인 요청을 취소했어요');
+      return after();
+    }
+    showSheet('해설에서 어떤 점이 이상한가요? (안 써도 돼요)', [{ label: '확인 요청 보내기', cls: 'navy', fn: body => {
+      const note = body.querySelector('textarea').value.trim().slice(0, 300);
+      state.expFlags[q.id] = { at: Date.now(), note, exp: q.exp };
+      saveState();
+      if (typeof cloudReport === 'function') cloudReport(q.id, { note, exp: q.exp });
+      toast('확인 요청을 보냈어요');
+      after();
+    } }], '<textarea class="flag-note" rows="3" placeholder="예: 교재 설명과 달라요, 법이 바뀐 것 같아요"></textarea>');
+  });
+}
+
 // AI에게 물어볼 글 만들기
 function aiText(q, picked) {
   const head = `[사회복지사 1급 ${q.year}년${ROUNDS[q.year] ? `(제${ROUNDS[q.year]}회)` : ''} ${q.session}교시 ${q.no}번 · ${q.subjectFull}]`;
@@ -463,9 +519,19 @@ function aiText(q, picked) {
   const ans = q.answer.map(n => MARKS[n - 1]).join(', ');
   let tail = `정답: ${ans}`;
   if (picked !== undefined) tail += ` / 내가 고른 답: ${MARKS[picked - 1]}`;
-  const ask = picked !== undefined && !q.answer.includes(picked)
-    ? `왜 ${ans}이(가) 정답이고 ${MARKS[picked - 1]}은(는) 틀렸는지, 그리고 나머지 보기도 하나씩 쉽게 설명해 줘.`
-    : `왜 ${ans}이(가) 정답인지, 나머지 보기는 왜 아닌지 하나씩 쉽게 설명해 줘.`;
+  const wrong = picked !== undefined && !q.answer.includes(picked);
+  let ask;
+  if (q.exp) {
+    // 앱에 정답 해설이 있으면: 해설을 붙이고 나머지 보기를 물어봄
+    tail += `\n앱 해설: ${q.exp}`;
+    const rest = q.choices.map((c, i) => i + 1).filter(n => !q.answer.includes(n)).map(n => MARKS[n - 1]).join('');
+    const neg = /않은|않는|틀린|아닌|먼\s?것/.test(stemText(q));
+    ask = `정답 해설은 봤어. ${rest}가 각각 왜 ${neg ? '옳은 설명이라 정답이 아닌지' : '정답이 아닌지'} 하나씩 쉽게 설명해 줘.${wrong ? ` 특히 내가 고른 ${MARKS[picked - 1]}을(를) 왜 고르면 안 되는지 자세히.` : ''}`;
+  } else {
+    ask = wrong
+      ? `왜 ${ans}이(가) 정답이고 ${MARKS[picked - 1]}은(는) 틀렸는지, 그리고 나머지 보기도 하나씩 쉽게 설명해 줘.`
+      : `왜 ${ans}이(가) 정답인지, 나머지 보기는 왜 아닌지 하나씩 쉽게 설명해 줘.`;
+  }
   return `${head}\n${body}\n\n${ch}\n\n${tail}\n${ask}${q.subject === '법제론' ? '\n(법이 바뀌었을 수 있으니 지금 법 기준으로도 알려 줘.)' : ''}`;
 }
 function copyForAI(q, picked) {

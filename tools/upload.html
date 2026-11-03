@@ -9,6 +9,8 @@
     h1 { font-size: 22px; }
     button { font: inherit; font-weight: 800; border-radius: 10px; padding: 12px 16px; border: 1.5px solid #E2CF62; background: #FFF3B0; color: #1E2A4A; cursor: pointer; }
     input[type=file] { margin: 12px 0; }
+    h2 { font-size: 18px; margin-top: 28px; }
+    #rlist div { background: #fff; border: 1.5px solid #E2DFD5; border-radius: 10px; padding: 10px 12px; margin-top: 8px; font-size: 14px; }
     #log { white-space: pre-wrap; background: #fff; border: 1.5px solid #E2DFD5; border-radius: 10px; padding: 12px; margin-top: 16px; font-size: 14px; min-height: 60px; }
   </style>
 </head>
@@ -19,6 +21,11 @@
   <button id="login" type="button">구글로 로그인</button>
   <div id="step2" hidden>
     <button id="send" type="button">맥에 있는 문제 모두 올리기</button>
+    <h2>해설 확인 요청</h2>
+    <p>엄마가 앱에서 "해설이 이상해요 ⚑"를 누른 문제예요. [맥에 저장]을 누르면 다운로드 폴더에 <code>해설확인요청.json</code>이 생겨요. Claude에게 "해설 신고 확인해 줘"라고 하면 돼요.</p>
+    <button id="reports" type="button">목록 보기</button>
+    <button id="saveReports" type="button" hidden>맥에 저장</button>
+    <div id="rlist"></div>
   </div>
   <div id="log">로그인해 주세요.</div>
 
@@ -36,8 +43,35 @@
       document.getElementById('login').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => log('로그인 실패: ' + e.code));
       auth.onAuthStateChanged(u => {
         document.getElementById('step2').hidden = !u;
-        if (u) log(`${u.email}로 로그인했어요. 파일을 골라 주세요.`);
+        if (u) log(`${u.email}로 로그인했어요. 올리기를 눌러 주세요.`);
       });
+      // 해설 확인 요청 목록 (reports)
+      let reports = [];
+      document.getElementById('reports').onclick = async () => {
+        const box = document.getElementById('rlist');
+        box.textContent = '불러오는 중…';
+        try {
+          const snap = await db.collection('reports').get();
+          reports = [];
+          snap.forEach(d => reports.push(d.data()));
+          reports.sort((a, b) => a.id.localeCompare(b.id, 'en', { numeric: true }));
+          box.innerHTML = reports.length ? '' : '요청이 없어요.';
+          reports.forEach(r => {
+            const el = document.createElement('div');
+            el.textContent = `${r.id} · ${new Date(r.at).toLocaleDateString()}${r.note ? ` · "${r.note}"` : ''}`;
+            box.appendChild(el);
+          });
+          document.getElementById('saveReports').hidden = !reports.length;
+        } catch (e) {
+          box.textContent = '불러오지 못했어요: ' + (e.code === 'permission-denied' ? 'Firebase 규칙에 reports가 아직 없어요' : e.message);
+        }
+      };
+      document.getElementById('saveReports').onclick = () => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(reports, null, 1)], { type: 'application/json' }));
+        a.download = '해설확인요청.json';
+        a.click();
+      };
       document.getElementById('send').onclick = async () => {
         // 맥의 data/연도.json을 직접 읽음 (파일 고르기 없이)
         log('맥에서 문제 파일을 찾는 중…');
@@ -53,14 +87,35 @@
             log(out.concat(`⏳ ${f.name} 올리는 중…`).join('\n'));
             const d = JSON.parse(await f.text());
             if (!d.year || !Array.isArray(d.questions)) throw new Error('문제 파일이 아니에요');
+            // 해설(data/explain/연도.json)이 있으면 문제에 붙여서 올림
+            const er = await fetch(`../data/explain/${d.year}.json`, { cache: 'no-store' }).catch(() => null);
+            const ex = er && er.ok ? await er.json() : {};
+            let nExp = 0;
+            d.questions.forEach(q => { if (ex[q.id]) { q.exp = ex[q.id]; nExp++; } });
             const timeout = new Promise((_, no) => setTimeout(() => no(new Error('30초 안에 끝나지 않았어요 (인터넷 연결 확인)')), 30000));
             await Promise.race([db.collection('exams').doc(String(d.year)).set(d), timeout]);
-            out.push(`✅ ${d.year}년 ${d.questions.length}문제`);
+            out.push(`✅ ${d.year}년 ${d.questions.length}문제${nExp ? ` · 해설 ${nExp}개` : ''}`);
           } catch (e) {
             out.push(`❌ ${f.name}: ${e.code === 'permission-denied' ? '이 계정은 올릴 수 없어요' : e.message}`);
           }
           log(out.join('\n'));
         }
+        // 해설을 고쳐서 올렸으면 그 확인 요청은 지움 (요청할 때의 해설과 지금 해설이 다르면 고친 것)
+        try {
+          const now = {};
+          for (const f of files) {
+            const y = f.name.replace('.json', '');
+            const er = await fetch(`../data/explain/${y}.json`, { cache: 'no-store' }).catch(() => null);
+            if (er && er.ok) Object.assign(now, await er.json());
+          }
+          const snap = await db.collection('reports').get();
+          let fixed = 0;
+          for (const d of snap.docs) {
+            const r = d.data();
+            if (now[r.id] && now[r.id] !== r.exp) { await d.ref.delete(); fixed++; }
+          }
+          if (fixed) log(out.concat(`🔧 고친 해설 ${fixed}개의 확인 요청을 지웠어요`).join('\n'));
+        } catch (e) { /* 규칙에 reports가 없으면 건너뜀 */ }
       };
     }
   </script>

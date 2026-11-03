@@ -132,11 +132,12 @@ function buildIndex() {
 function renderSearch() {
   const term = view.data.term || '';
   appEl.innerHTML = `
-    ${headHtml('검색')}
+    ${headHtml('검색', '<button type="button" class="head-btn" id="oxBack">← O/X</button>')}
     <div class="body">
       <input class="search" id="term" type="search" placeholder="예: 사례관리, 에릭슨, 기초생활" value="${esc(term)}" autocomplete="off">
       <div id="results"></div>
     </div>`;
+  document.getElementById('oxBack').addEventListener('click', () => go('ox'));
   const input = document.getElementById('term');
   let timer = null;
   input.addEventListener('input', () => {
@@ -176,37 +177,121 @@ function showResults() {
 }
 
 // ---------- 모의고사 ----------
+// 실제 시험지(연도·교시) 또는 섞어 만들기(과목마다 25문제씩 여러 해에서)
 function renderMock() {
   const d = view.data;
+  const st = state.settings;
+  if (!d.mode) d.mode = 'real';
   if (!d.year) d.year = YEARS[0];
   if (!d.session) d.session = 1;
-  const ids = Q.filter(q => q.year === d.year && q.session === d.session).map(q => q.id);
-  const subj = SUBJECTS.filter(s => s.session === d.session).map(s => s.k).join(' · ');
   const hist = state.mocks.slice(-3).reverse();
+  const chip = (on, label, attr) => `<button type="button" class="chip${on ? ' on' : ''}" ${attr}>${esc(label)}</button>`;
+  let body, ids = [], label = '';
+  if (d.mode === 'real') {
+    ids = Q.filter(q => q.year === d.year && q.session === d.session).map(q => q.id);
+    const subj = SUBJECTS.filter(x => x.session === d.session).map(x => x.k).join(' · ');
+    body = `
+      <p class="lbl">연도</p>
+      <div class="chips" id="yearC">${YEARS.map(y => chip(d.year === y, `${y}${ROUNDS[y] ? ` (${ROUNDS[y]}회)` : ''}`, `data-v="${y}"`)).join('')}</div>
+      <p class="lbl">교시</p>
+      <div class="chips" id="sesC">${[1, 2, 3].map(x => chip(d.session === x, `${x}교시`, `data-v="${x}"`)).join('')}</div>
+      <p class="hint">${subj}<br>${ids.length}문제 · ${SESSION_MIN[d.session]}분 · 다 풀고 제출하면 채점해요</p>`;
+    label = '시작하기';
+  } else {
+    const ses = st.mixSession ? [st.mixSession] : [1, 2, 3];
+    const n = ses.reduce((a, x) => a + SUBJECTS.filter(y => y.session === x).length * 25, 0);
+    const min = ses.reduce((a, x) => a + SESSION_MIN[x], 0);
+    body = `
+      <p class="lbl">교시</p>
+      <div class="chips" id="mixSes">${[1, 2, 3].map(x => chip(st.mixSession === x, `${x}교시`, `data-v="${x}"`)).join('')}${chip(!st.mixSession, '전체', 'data-v="0"')}</div>
+      <p class="lbl">문제 고르기</p>
+      <div class="chips" id="mixSrc">
+        ${chip(st.mixSrc === 'random', '무작위', 'data-v="random"')}
+        ${chip(st.mixSrc === 'unsolved', '안 푼 것 위주', 'data-v="unsolved"')}
+        ${chip(st.mixSrc === 'note', '오답노트 위주', 'data-v="note"')}
+      </div>
+      <p class="hint">과목마다 25문제씩 여러 해에서 골라 새 시험지를 만들어요.<br>${st.mixSession ? '' : '1→2→3교시를 이어서 풀고, 시간은 교시마다 따로 재요.<br>'}${n}문제 · ${min}분</p>`;
+    label = `시작 ▶ ${st.mixSession ? `${st.mixSession}교시` : '전체'} ${n}문제`;
+    ids = [1];
+  }
   appEl.innerHTML = `
     ${headHtml('모의고사')}
     <div class="body">
-      <p class="lbl">연도</p>
-      <div class="chips" id="yearC">${YEARS.map(y => `<button type="button" class="chip${d.year === y ? ' on' : ''}" data-v="${y}">${y}${ROUNDS[y] ? ` (${ROUNDS[y]}회)` : ''}</button>`).join('')}</div>
-      <p class="lbl">교시</p>
-      <div class="chips" id="sesC">${[1, 2, 3].map(s => `<button type="button" class="chip${d.session === s ? ' on' : ''}" data-v="${s}">${s}교시</button>`).join('')}</div>
-      <p class="hint">${subj}<br>${ids.length}문제 · ${SESSION_MIN[d.session]}분 · 다 풀고 제출하면 채점해요</p>
+      <div class="seg" id="modeSeg">
+        <button type="button" data-v="real" class="${d.mode === 'real' ? 'on' : ''}">실제 시험지</button>
+        <button type="button" data-v="mix" class="${d.mode === 'mix' ? 'on' : ''}">섞어 만들기</button>
+      </div>
+      ${body}
       ${state.resume && state.resume.kind === 'mock' ? '<p class="hint">⚠️ 보던 모의고사가 있어요. 새로 시작하면 그건 없어져요.</p>' : ''}
-      <button class="btn yellow start" type="button" id="goBtn"${ids.length ? '' : ' disabled'}>시작하기</button>
+      <button class="btn yellow start" type="button" id="goBtn"${ids.length ? '' : ' disabled'}>${label}</button>
       ${hist.length ? `<p class="lbl" style="margin-top:22px">최근 기록</p>${hist.map(mockLine).join('')}` : ''}
     </div>`;
-  document.getElementById('yearC').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { d.year = Number(b.dataset.v); render(); } });
-  document.getElementById('sesC').addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) { d.session = Number(b.dataset.v); render(); } });
-  document.getElementById('goBtn').addEventListener('click', () => {
-    const start = () => startQuiz({ kind: 'mock', title: `${d.year}년 ${d.session}교시`, ids, year: d.year, session: d.session, endsAt: Date.now() + SESSION_MIN[d.session] * 60000 });
+  const on = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
+  on('modeSeg', e => { const b = e.target.closest('button'); if (b) { d.mode = b.dataset.v; render(); } });
+  on('yearC', e => { const b = e.target.closest('.chip'); if (b) { d.year = Number(b.dataset.v); render(); } });
+  on('sesC', e => { const b = e.target.closest('.chip'); if (b) { d.session = Number(b.dataset.v); render(); } });
+  on('mixSes', e => { const b = e.target.closest('.chip'); if (b) { st.mixSession = Number(b.dataset.v); saveState(); render(); } });
+  on('mixSrc', e => { const b = e.target.closest('.chip'); if (b) { st.mixSrc = b.dataset.v; saveState(); render(); } });
+  on('goBtn', () => {
+    const start = () => {
+      if (d.mode === 'real') {
+        startQuiz({ kind: 'mock', title: `${d.year}년 ${d.session}교시`, ids, year: d.year, session: d.session,
+          stages: [{ session: d.session, from: 0, to: ids.length, min: SESSION_MIN[d.session] }], stage: 0,
+          endsAt: Date.now() + SESSION_MIN[d.session] * 60000 });
+      } else {
+        const m = buildMix(st.mixSession, st.mixSrc);
+        const src = { random: '무작위', unsolved: '안 푼 것 위주', note: '오답노트 위주' }[st.mixSrc];
+        startQuiz({ kind: 'mock', title: `섞은 모의고사 ${st.mixSession ? `${st.mixSession}교시` : '전체'} · ${src}`, ids: m.ids, mix: true,
+          session: st.mixSession, stages: m.stages, stage: 0, endsAt: Date.now() + m.stages[0].min * 60000 });
+      }
+    };
     if (state.resume && state.resume.kind !== 'mock') {
       showSheet('풀던 문제 묶음이 있어요. 모의고사를 시작하면 이어 풀기는 없어져요.', [{ label: '모의고사 시작', cls: 'navy', fn: start }]);
     } else start();
   });
 }
+// 섞은 시험지: 교시마다, 과목마다 25문제 (과목 순서대로, 과목 안은 섞음)
+function buildMix(session, src) {
+  const ids = [], stages = [];
+  (session ? [session] : [1, 2, 3]).forEach(x => {
+    const from = ids.length;
+    SUBJECTS.filter(y => y.session === x).forEach(sub => {
+      const pool = Q.filter(q => q.subject === sub.k);
+      let order;
+      if (src === 'random') order = shuffle(pool.slice());
+      else {
+        const inNote = src === 'note' ? shuffle(pool.filter(q => state.note[q.id])) : [];
+        const rest = pool.filter(q => !inNote.includes(q));
+        order = inNote.concat(shuffle(rest.filter(q => !solvedNow(q.id))), shuffle(rest.filter(q => solvedNow(q.id))));
+      }
+      shuffle(order.slice(0, 25)).forEach(q => ids.push(q.id));
+    });
+    stages.push({ session: x, from, to: ids.length, min: SESSION_MIN[x] });
+  });
+  return { ids, stages };
+}
+// 지금 교시 (옛 기록은 교시 구분이 없어서 전체를 한 교시로)
+function stageOf(run) {
+  return run.stages ? run.stages[run.stage || 0] : { session: run.session, from: 0, to: run.ids.length, min: SESSION_MIN[run.session] };
+}
+function hasNextStage(run) { return !!run.stages && (run.stage || 0) < run.stages.length - 1; }
+// 교시가 끝남: 다음 교시가 있으면 넘어가고, 없으면 채점
+function stageEnd(run, timeUp) {
+  if (!hasNextStage(run)) return submitMock(timeUp);
+  stopTimer();
+  const prev = stageOf(run);
+  run.stage = (run.stage || 0) + 1;
+  const st = stageOf(run);
+  run.idx = st.from;
+  run.endsAt = Date.now() + st.min * 60000;
+  saveState();
+  renderQuiz();
+  window.scrollTo(0, 0);
+  toast(`${timeUp ? `${prev.session}교시 시간이 끝났어요. ` : ''}${st.session}교시 시작 (${st.min}분)`, 3000);
+}
 function mockLine(m) {
   const dt = new Date(m.at);
-  return `<div class="row-line"><b>${m.year}년 ${m.session}교시</b><span>${dt.getMonth() + 1}/${dt.getDate()} · 평균 ${m.avg}점 · ${m.cut.length ? `과락 ${m.cut.join(', ')}` : '과락 없음'}</span></div>`;
+  return `<div class="row-line"><b>${esc(m.title || `${m.year}년 ${m.session}교시`)}</b><span>${dt.getMonth() + 1}/${dt.getDate()} · 평균 ${m.avg}점 · ${m.cut.length ? `과락 ${m.cut.join(', ')}` : '과락 없음'}</span></div>`;
 }
 
 let timerId = null;
@@ -215,7 +300,7 @@ function startTimer(run) {
   const tick = () => {
     const el = document.getElementById('timer');
     const left = run.endsAt - Date.now();
-    if (left <= 0) { stopTimer(); return submitMock(true); }
+    if (left <= 0) { stopTimer(); return stageEnd(run, true); }
     if (!el) return stopTimer();
     const m = Math.floor(left / 60000), s = Math.floor(left / 1000) % 60;
     el.textContent = `${m}:${String(s).padStart(2, '0')}`;
@@ -227,8 +312,10 @@ function startTimer(run) {
 function stopTimer() { clearInterval(timerId); timerId = null; }
 
 function showGrid(run) {
-  const html = `<div class="numgrid">${run.ids.map((id, i) => `<button type="button" data-i="${i}" class="${run.picks[id] !== undefined ? 'done' : ''}${i === run.idx ? ' cur' : ''}">${QI[id].no}</button>`).join('')}</div>`;
-  const left = run.ids.filter(id => run.picks[id] === undefined).length;
+  const st = stageOf(run);
+  const ids = run.ids.slice(st.from, st.to);
+  const html = `<div class="numgrid">${ids.map((id, k) => `<button type="button" data-i="${st.from + k}" class="${run.picks[id] !== undefined ? 'done' : ''}${st.from + k === run.idx ? ' cur' : ''}">${k + 1}</button>`).join('')}</div>`;
+  const left = ids.filter(id => run.picks[id] === undefined).length;
   showSheet(left ? `안 푼 문제 ${left}개` : '모두 골랐어요', [], html);
   document.querySelector('#sheetBody .numgrid').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
@@ -237,8 +324,12 @@ function showGrid(run) {
   });
 }
 function confirmSubmit(run) {
-  const left = run.ids.filter(id => run.picks[id] === undefined).length;
-  showSheet(left ? `아직 ${left}문제를 안 골랐어요. 제출할까요?` : '제출하고 채점할까요?', [{ label: '제출', cls: 'navy', fn: () => submitMock(false) }]);
+  const st = stageOf(run);
+  const left = run.ids.slice(st.from, st.to).filter(id => run.picks[id] === undefined).length;
+  const head = left ? `아직 ${left}문제를 안 골랐어요. ` : '';
+  if (hasNextStage(run)) {
+    showSheet(`${head}${st.session}교시를 제출하고 다음 교시로 넘어갈까요? 이 교시로는 돌아올 수 없어요.`, [{ label: '다음 교시로', cls: 'navy', fn: () => stageEnd(run, false) }]);
+  } else showSheet(head ? `${head}제출할까요?` : '제출하고 채점할까요?', [{ label: '제출', cls: 'navy', fn: () => submitMock(false) }]);
 }
 function submitMock(timeUp) {
   stopTimer();
@@ -260,8 +351,9 @@ function submitMock(timeUp) {
   const vals = Object.values(scores);
   const avg = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10;
   const cut = Object.keys(scores).filter(k => scores[k] < 40);
-  const result = { year: run.year, session: run.session, at: Date.now(), scores, avg, cut, timeUp: !!timeUp, ids: run.ids, picks: run.picks };
-  state.mocks.push({ year: run.year, session: run.session, at: result.at, scores, avg, cut });
+  const title = run.mix ? run.title : `${run.year}년 ${run.session}교시`;
+  const result = { title, year: run.year, session: run.session, at: Date.now(), scores, avg, cut, timeUp: !!timeUp, ids: run.ids, picks: run.picks };
+  state.mocks.push({ title, year: run.year, session: run.session, at: result.at, scores, avg, cut });
   state.resume = null;
   checkRound();
   saveState();
@@ -276,12 +368,12 @@ function renderMockResult() {
   const wrong = r.ids.filter(id => !QI[id].answer.includes(r.picks[id]));
   const total = Object.keys(r.scores).length;
   appEl.innerHTML = `
-    ${headHtml(`${r.year}년 ${r.session}교시 결과`)}
+    ${headHtml(`${esc(r.title || `${r.year}년 ${r.session}교시`)} 결과`)}
     <div class="body">
       <div class="score"><b>${r.avg}점</b><span>과목 ${total}개 평균</span><br>
         <span class="verdict${pass ? ' pass' : ''}">${pass ? '합격권' : r.cut.length ? '과락' : '평균 미달'}</span></div>
       ${Object.keys(r.scores).map(k => `<div class="subj-score"><span>${esc(SUBJECTS.find(s => s.k === k).full)}</span><b class="${r.scores[k] < 40 ? 'cut' : ''}">${r.scores[k]}점${r.scores[k] < 40 ? ' 과락' : ''}</b></div>`).join('')}
-      <p class="small-note">합격 기준: 모든 과목 40점 이상 + 평균 60점 이상. 이 판정은 이 교시만 본 거예요.</p>
+      <p class="small-note">합격 기준: 모든 과목 40점 이상 + 평균 60점 이상. ${total === SUBJECTS.length ? '세 교시 전체로 본 판정이에요.' : '이 판정은 이 교시만 본 거예요.'}</p>
       ${wrong.length ? `<p class="lbl">틀리거나 안 푼 문제 ${wrong.length}개</p><div id="wrongList">${wrong.map(id => listCard(QI[id], {
         tag: r.picks[id] === undefined ? '<span class="tag h">안 풂</span>' : '<span class="tag x">틀림</span>', btn: noteBtnHtml(id) })).join('')}</div>` : ''}
       <button class="btn navy start" type="button" id="doneBtn">모의고사로</button>
@@ -308,6 +400,11 @@ function renderStats() {
         <div class="row-line"><input class="date-in" type="date" id="examDate" value="${esc(state.settings.examDate)}"><b>${dday() || ''}</b></div>
       </div>
       <div class="section">
+        <h3>글자 크기</h3>
+        <div class="chips" id="fontC">${['보통', '크게', '아주 크게'].map((t, i) => `<button type="button" class="chip${(state.settings.font || 0) === i ? ' on' : ''}" data-v="${i}">${t}</button>`).join('')}</div>
+        <p class="small-note">문제·보기·해설·O/X 글자가 커져요.</p>
+      </div>
+      <div class="section">
         <h3>회독</h3>
         <div class="row-line"><b>지금 ${state.round}회독</b><span>${p.done.toLocaleString()} / ${p.total.toLocaleString()} (${Math.floor(p.pct)}%)</span></div>
         ${state.rounds.map(r => { const d = new Date(r.at); return `<div class="row-line">${r.n}회독 완료<span>${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}</span></div>`; }).join('')}
@@ -328,6 +425,10 @@ function renderStats() {
         ${user ? `<div class="row-line">계정<span>${esc(user)}</span></div><button class="btn ghost start" type="button" id="logoutBtn">로그아웃</button>` : ''}
       </div>
     </div>`;
+  document.getElementById('fontC').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    state.settings.font = Number(b.dataset.v); saveState(); render();
+  });
   document.getElementById('examDate').addEventListener('change', e => { state.settings.examDate = e.target.value; saveState(); render(); });
   const lo = document.getElementById('logoutBtn');
   if (lo) lo.addEventListener('click', () => showSheet('로그아웃할까요? 다시 로그인하면 기록이 그대로 돌아와요.', [{ label: '로그아웃', cls: 'danger', fn: cloudSignOut }]));

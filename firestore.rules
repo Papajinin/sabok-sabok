@@ -1,7 +1,7 @@
 rules_version = '2';
 
 // 사복사복: 허락한 구글 계정(엄마, 아빠)만 문제를 읽고, 각자 자기 풀이 기록만 읽고 쓸 수 있음
-// 문제 올리기(tools/upload.html)는 아빠 계정만
+// 문제 올리기(tools/upload.html)는 아빠 계정만. 해설 확인 요청(reports)은 둘 다 읽고 씀
 // 고친 뒤에는 Firebase 관리 화면 → Firestore → 규칙에 붙여 넣고 "게시"
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -22,6 +22,11 @@ service cloud.firestore {
     match /exams/{year} {
       allow read: if isAllowed();
       allow write: if isDad();
+    }
+
+    // 해설 확인 요청 (엄마·아빠가 같이 봄)
+    match /reports/{id} {
+      allow read, write: if isAllowed();
     }
 
     // 풀이 기록 (사람마다 따로)

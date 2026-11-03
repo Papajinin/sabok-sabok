@@ -15,7 +15,7 @@
   <script>
     // 새 버전 스스로 받기: 켤 때 서버의 version.txt 숫자가 APP_VERSION보다 크면 새 파일을 받아 한 번 새로고침.
     // 올릴 때마다 두 숫자를 같이 올린다
-    const APP_VERSION = 4;
+    const APP_VERSION = 5;
     (function () {
       const t0 = Date.now();
       const key = 'sabok.updated';
@@ -31,7 +31,7 @@
         .catch(() => {});
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
   <!-- 시작 화면 (앱을 열 때 약 1.6초): 왼발 → 오른발 → 이름 → 合格 도장 -->
@@ -73,7 +73,7 @@
   <nav class="tabs" id="tabs">
     <button type="button" data-tab="home"><b>🏠</b>홈</button>
     <button type="button" data-tab="note"><b>📝</b><span id="noteTabLabel">오답</span></button>
-    <button type="button" data-tab="search"><b>🔍</b>검색</button>
+    <button type="button" data-tab="ox"><b>⭕</b>O/X</button>
     <button type="button" data-tab="mock"><b>⏱</b>모의고사</button>
     <button type="button" data-tab="stats"><b>📊</b>기록</button>
   </nav>
@@ -93,8 +93,9 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="sync-config.js?v=1"></script>
-  <script src="app.js?v=4"></script>
-  <script src="views.js?v=4"></script>
-  <script src="sync.js?v=3"></script>
+  <script src="app.js?v=5"></script>
+  <script src="views.js?v=5"></script>
+  <script src="ox.js?v=5"></script>
+  <script src="sync.js?v=5"></script>
 </body>
 </html>
