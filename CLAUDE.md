@@ -15,4 +15,4 @@
 - **해설:** `data/explain/연도.json` (문제 id → 정답 해설, 비공개). 2021~2026 1,200개 모두 있음. 올리기 화면이 문제에 `exp`로 붙여 올림. 법 개정 걱정은 해설 끝에 "(…최신 법령으로 확인)". 앱의 [해설이 이상해요 ⚑] → Firebase `reports` → 올리기 화면 [맥에 저장](다운로드 폴더 `해설확인요청.json`)
 - **설정값이 비어 있으면** 로그인 없이 이 컴퓨터의 `data/`에서 읽음 (만들면서 확인용)
 - **기록:** `users/{uid}` 문서 하나에 state 전체(JSON 글자). 나중에 고친 쪽(updatedAt)이 이김
-- **버전:** 올릴 때마다 `index.html`의 `APP_VERSION`과 `version.txt`를 같이 올림. 지금 5
+- **버전:** 올릴 때마다 `index.html`의 `APP_VERSION`과 `version.txt`를 같이 올림. 지금 6

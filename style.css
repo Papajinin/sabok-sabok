@@ -286,3 +286,9 @@ body[data-fs="2"] .ox-card { font-size: 22px; }
 .exp-flag { font-size: 13px; color: var(--muted); border: 1.5px solid var(--line); border-radius: 6px; padding: 4px 10px; background: var(--card); }
 .exp.flagged { border-color: #E9B4AE; border-left-color: var(--red); }
 .flag-note { width: 100%; font: inherit; font-size: 16px; border: 1.5px solid var(--line); border-radius: 8px; padding: 10px; margin-bottom: 10px; resize: vertical; }
+.flag-row { display: block; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: none; border-bottom: 1px solid var(--line); padding: 10px 0; cursor: pointer; }
+.flag-row b { display: block; font-size: 14px; }
+.flag-line { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); margin-top: 2px; }
+.flag-line em { font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flag-line span { flex: none; }
+.flag-line .fixed { color: var(--green); font-weight: 800; }

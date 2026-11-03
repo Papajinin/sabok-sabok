@@ -31,13 +31,12 @@ function oxPool() {
 
 // ---------- O/X 고르기 화면 (아래 탭) ----------
 function renderOX() {
-  if (view.data.search) return renderSearch();
   const s = state.settings;
   const pool = oxPool();
   const n = s.oxCount === 0 ? pool.length : Math.min(s.oxCount, pool.length);
   const chip = (on, label, attr) => `<button type="button" class="chip${on ? ' on' : ''}" ${attr}>${esc(label)}</button>`;
   appEl.innerHTML = `
-    ${headHtml('O/X', '<button type="button" class="head-btn" id="searchBtn">🔍 검색</button>')}
+    ${headHtml('O/X')}
     <div class="body">
       <div class="seg" id="oxMode">
         <button type="button" data-v="quiz" class="${s.oxMode === 'quiz' ? 'on' : ''}">O/X 풀기</button>
@@ -74,7 +73,6 @@ function renderOX() {
   multi('oxYear', 'oxYears', true);
   on('oxMode', e => { const b = e.target.closest('button'); if (b) { s.oxMode = b.dataset.v; saveState(); render(); } });
   on('oxCount', e => { const b = e.target.closest('.chip'); if (b) { s.oxCount = Number(b.dataset.v); saveState(); render(); } });
-  on('searchBtn', () => { view.data.search = true; render(); window.scrollTo(0, 0); });
   if (n) on('oxGo', () => {
     const items = shuffle(pool.slice()).slice(0, n);
     view = { tab: 'ox', screen: 'ox', data: { run: { mode: s.oxMode, items, idx: 0, picks: {} } } };

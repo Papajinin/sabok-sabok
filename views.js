@@ -1,4 +1,4 @@
-// 사복사복: 오답노트 · 검색 · 모의고사 · 기록 화면
+// 사복사복: 오답노트 · 검색(오답노트 머리의 🔍) · 모의고사 · 기록 화면
 
 // ---------- 오답노트 ----------
 const GRAD = 3; // 연속으로 이만큼 맞히면 졸업 후보 (빼는 건 직접)
@@ -17,6 +17,7 @@ function noteSort(ids, how) {
   return ids.slice().sort(by);
 }
 function renderNote() {
+  if (view.data.search) return renderSearch();
   const s = state.settings;
   const f = view.data.filter || 'all';
   const grad = !!view.data.grad;
@@ -37,7 +38,7 @@ function renderNote() {
   const chip = (on, label, attr) => `<button type="button" class="chip${on ? ' on' : ''}" ${attr}>${esc(label)}</button>`;
   const streak = id => { const k = Math.min(state.note[id].s || 0, GRAD); return '✓'.repeat(k) + '○'.repeat(GRAD - k); };
   appEl.innerHTML = `
-    ${headHtml('오답노트', `<div class="dday">${all.length}</div>`)}
+    ${headHtml('오답노트', '<button type="button" class="head-btn" id="searchBtn">🔍 전체 검색</button>')}
     <div class="body">
       ${bars.length ? `<div class="nbars" id="bars">
         ${shownBars.map(x => `<button type="button" class="nbar${s.nSubjects.length === 1 && s.nSubjects[0] === x.k ? ' on' : ''}" data-v="${x.k}">
@@ -110,6 +111,7 @@ function renderNote() {
     saveState(); render();
   });
   on('gradBtn', () => { view.data.grad = !grad; render(); });
+  on('searchBtn', () => { view.data.search = true; render(); window.scrollTo(0, 0); });
   document.getElementById('nSort').addEventListener('change', e => { s.nSort = e.target.value; saveState(); render(); });
   if (!list.length) return;
   on('solveBtn', () => {
@@ -132,12 +134,12 @@ function buildIndex() {
 function renderSearch() {
   const term = view.data.term || '';
   appEl.innerHTML = `
-    ${headHtml('검색', '<button type="button" class="head-btn" id="oxBack">← O/X</button>')}
+    ${headHtml('전체 검색', '<button type="button" class="head-btn" id="noteBack">← 오답노트</button>')}
     <div class="body">
       <input class="search" id="term" type="search" placeholder="예: 사례관리, 에릭슨, 기초생활" value="${esc(term)}" autocomplete="off">
       <div id="results"></div>
     </div>`;
-  document.getElementById('oxBack').addEventListener('click', () => go('ox'));
+  document.getElementById('noteBack').addEventListener('click', () => go('note'));
   const input = document.getElementById('term');
   let timer = null;
   input.addEventListener('input', () => {
@@ -383,6 +385,23 @@ function renderMockResult() {
 }
 
 // ---------- 기록 ----------
+// 해설 확인 요청 목록: 요청할 때의 해설과 지금 해설이 다르면 고쳐진 것
+function flagFixed(id) { return QI[id] && QI[id].exp !== state.expFlags[id].exp; }
+function flagSection() {
+  const ids = Object.keys(state.expFlags).filter(id => QI[id]).sort((a, b) => state.expFlags[b].at - state.expFlags[a].at);
+  if (!ids.length) return '';
+  const day = t => { const d = new Date(t); return `${d.getMonth() + 1}.${d.getDate()}`; };
+  const fixedN = ids.filter(flagFixed).length;
+  return `<div class="section">
+        <h3>해설 확인 요청</h3>
+        <div id="flagList">${ids.map(id => { const f = state.expFlags[id], ok = flagFixed(id); return `<button type="button" class="flag-row" data-id="${id}">
+          <b>${esc(where(QI[id]))}</b>
+          <span class="flag-line"><em>${f.note ? `"${esc(f.note)}"` : ''}</em><span class="${ok ? 'fixed' : ''}">${day(f.at)} ${ok ? '✓ 고쳐짐' : '확인 중'}</span></span>
+        </button>`; }).join('')}</div>
+        ${fixedN ? `<button class="btn ghost start" type="button" id="flagClear">고쳐진 것 목록에서 지우기 (${fixedN})</button>` : ''}
+        <p class="small-note">요청한 해설은 아빠가 확인해서 고쳐요. 고쳐지면 "✓ 고쳐짐"으로 바뀌어요.</p>
+      </div>`;
+}
 function renderStats() {
   const p = roundProgress();
   // 과목별 진행률: 이번 회독에서 푼 문제 (맞았든 틀렸든)
@@ -418,6 +437,7 @@ function renderStats() {
         <p class="small-note">${state.round}회독에서 푼 문제예요. 맞았든 틀렸든 풀면 들어가요.</p>
       </div>
       ${state.mocks.length ? `<div class="section"><h3>모의고사 기록</h3>${state.mocks.slice().reverse().map(mockLine).join('')}</div>` : ''}
+      ${flagSection()}
       <div class="section">
         <h3>앱</h3>
         <div class="row-line">버전<span>${APP_VERSION}</span></div>
@@ -428,6 +448,16 @@ function renderStats() {
   document.getElementById('fontC').addEventListener('click', e => {
     const b = e.target.closest('.chip'); if (!b) return;
     state.settings.font = Number(b.dataset.v); saveState(); render();
+  });
+  const fl = document.getElementById('flagList');
+  if (fl) fl.addEventListener('click', e => {
+    const row = e.target.closest('[data-id]'); if (!row) return;
+    startQuiz({ kind: 'single', title: '', ids: [row.dataset.id] });
+  });
+  const fc = document.getElementById('flagClear');
+  if (fc) fc.addEventListener('click', () => {
+    Object.keys(state.expFlags).forEach(id => { if (flagFixed(id)) delete state.expFlags[id]; });
+    saveState(); toast('고쳐진 요청을 목록에서 지웠어요'); render();
   });
   document.getElementById('examDate').addEventListener('change', e => { state.settings.examDate = e.target.value; saveState(); render(); });
   const lo = document.getElementById('logoutBtn');
