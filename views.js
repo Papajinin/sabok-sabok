@@ -356,6 +356,7 @@ function submitMock(timeUp) {
   const title = run.mix ? run.title : `${run.year}년 ${run.session}교시`;
   const result = { title, year: run.year, session: run.session, at: Date.now(), scores, avg, cut, timeUp: !!timeUp, ids: run.ids, picks: run.picks };
   state.mocks.push({ title, year: run.year, session: run.session, at: result.at, scores, avg, cut });
+  dayLog().m.push({ title, avg });
   state.resume = null;
   checkRound();
   saveState();

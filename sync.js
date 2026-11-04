@@ -154,7 +154,10 @@ function cloudSave() {
 }
 function pushNow() {
   if (!cloud.user) return;
-  userRef().set({ state: JSON.stringify(state), updatedAt: state.updatedAt }).catch(onCloudError);
+  // email·summary는 아빠 진도 보기(tools/progress.html)용
+  const solved = Q.filter(q => solvedNow(q.id)).length;
+  userRef().set({ state: JSON.stringify(state), updatedAt: state.updatedAt, email: cloud.user.email || '',
+    summary: { round: state.round, solved, total: Q.length } }).catch(onCloudError);
 }
 // 앱을 닫거나 다른 앱으로 갈 때 남은 것을 바로 올림
 document.addEventListener('visibilitychange', () => {

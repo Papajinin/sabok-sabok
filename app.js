@@ -43,6 +43,7 @@ function defaultState() {
     expFlags: {},      // 해설 확인 요청: 문제 id → { at, note, exp: 요청할 때의 해설 }
     resume: null,      // 풀던 묶음 (이어 풀기)
     mocks: [],         // 모의고사 기록
+    days: {},          // 날짜별 한 일 (아빠 진도 보기용): 'YYYY-MM-DD' → { n: 푼 문제, ok: 맞힌 문제, s: {과목: 푼 수}, nt: 오답노트에 넣은 수, m: [{ title, avg }] }
     statsSince: Date.now(), // 정답률을 센 시작 시각 (초기화하면 바뀜)
     updatedAt: 0
   };
@@ -327,6 +328,18 @@ function questionHtml(q) {
   return html;
 }
 
+// 오늘 날짜(이 기기 시간) 'YYYY-MM-DD'
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+// 오늘 한 일 칸 (없으면 만듦)
+function dayLog() {
+  const k = todayKey();
+  if (!state.days) state.days = {};
+  return state.days[k] || (state.days[k] = { n: 0, ok: 0, s: {}, nt: 0, m: [] });
+}
+
 function record(id, choice) {
   const q = QI[id];
   const ok = q.answer.includes(choice);
@@ -334,6 +347,9 @@ function record(id, choice) {
   r.a = choice; r.ok = ok; r.r = state.round; r.t = Date.now();
   if (ok) r.c++; else r.w++;
   state.rec[id] = r;
+  const log = dayLog();
+  log.n++; if (ok) log.ok++;
+  log.s[q.subject] = (log.s[q.subject] || 0) + 1;
   const n = state.note[id];
   if (n) n.s = ok ? (n.s || 0) + 1 : 0; // 오답노트 문제: 연속 맞힘 (틀리면 0부터)
   return ok;
@@ -471,7 +487,7 @@ function noteMenu(id, wasWrong, after) {
     ]);
     return;
   }
-  const add = tag => { state.note[id] = { tag, at: Date.now() }; saveState(); toast(`오답노트에 넣었어요 (${tag === 'x' ? '틀림' : '헷갈림'})`); after(); };
+  const add = tag => { state.note[id] = { tag, at: Date.now() }; dayLog().nt++; saveState(); toast(`오답노트에 넣었어요 (${tag === 'x' ? '틀림' : '헷갈림'})`); after(); };
   const x = { label: '❌ 틀림으로 넣기', cls: 'line', fn: () => add('x') };
   const h = { label: '🤔 헷갈림으로 넣기', cls: 'line', fn: () => add('h') };
   showSheet('오답노트에 어떻게 넣을까요?', wasWrong ? [x, h] : [h, x]);

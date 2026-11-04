@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// 사복사복: 허락한 구글 계정(엄마, 아빠)만 문제를 읽고, 각자 자기 풀이 기록만 읽고 쓸 수 있음
+// 사복사복: 허락한 구글 계정(엄마, 아빠)만 문제를 읽고, 각자 자기 풀이 기록만 쓸 수 있음 (아빠는 엄마 기록 읽기만)
 // 문제 올리기(tools/upload.html)는 아빠 계정만. 해설 확인 요청(reports)은 둘 다 읽고 씀
 // 고친 뒤에는 Firebase 관리 화면 → Firestore → 규칙에 붙여 넣고 "게시"
 service cloud.firestore {
@@ -29,9 +29,10 @@ service cloud.firestore {
       allow read, write: if isAllowed();
     }
 
-    // 풀이 기록 (사람마다 따로)
+    // 풀이 기록 (사람마다 따로). 아빠는 진도 보기(tools/progress.html)용으로 읽기만 가능
     match /users/{uid} {
-      allow read, write: if isAllowed() && request.auth.uid == uid;
+      allow read: if isAllowed() && (request.auth.uid == uid || isDad());
+      allow write: if isAllowed() && request.auth.uid == uid;
     }
   }
 }
