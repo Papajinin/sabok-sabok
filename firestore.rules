@@ -29,7 +29,7 @@ service cloud.firestore {
       allow read, write: if isAllowed();
     }
 
-    // 풀이 기록 (사람마다 따로). 아빠는 진도 보기(tools/progress.html)용으로 읽기만 가능
+    // 풀이 기록 (사람마다 따로). 아빠는 진도 보기(AIN View)용으로 읽기만 가능
     match /users/{uid} {
       allow read: if isAllowed() && (request.auth.uid == uid || isDad());
       allow write: if isAllowed() && request.auth.uid == uid;

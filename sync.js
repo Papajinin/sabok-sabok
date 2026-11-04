@@ -154,7 +154,7 @@ function cloudSave() {
 }
 function pushNow() {
   if (!cloud.user) return;
-  // email·summary는 아빠 진도 보기(tools/progress.html)용
+  // email·summary는 아빠 진도 보기(AIN View)용
   const solved = Q.filter(q => solvedNow(q.id)).length;
   userRef().set({ state: JSON.stringify(state), updatedAt: state.updatedAt, email: cloud.user.email || '',
     summary: { round: state.round, solved, total: Q.length } }).catch(onCloudError);
