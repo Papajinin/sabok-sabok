@@ -9,13 +9,14 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="SABOK">
   <meta name="theme-color" content="#1E2A4A">
+  <link rel="manifest" href="manifest.json"><!-- 안드로이드(갤럭시 태블릿) 크롬 "앱 설치"용 -->
   <link rel="apple-touch-icon" href="apple-touch-icon.png?v=1">
   <link rel="icon" type="image/png" href="apple-touch-icon.png?v=1">
   <title>SABOK SABOK</title>
   <script>
     // 새 버전 스스로 받기: 켤 때 서버의 version.txt 숫자가 APP_VERSION보다 크면 새 파일을 받아 한 번 새로고침.
     // 올릴 때마다 두 숫자를 같이 올린다
-    const APP_VERSION = 7;
+    const APP_VERSION = 8;
     (function () {
       const t0 = Date.now();
       const key = 'sabok.updated';
